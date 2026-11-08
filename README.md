@@ -14,6 +14,18 @@ Play it: https://mbrock.github.io/starfall/
 - **P**: pause
 - **M**: sound on or off
 
+### On a phone
+
+Play in portrait or landscape. Use your left thumb on the left half of the planet:
+drag up/down to walk forward/backward and left/right to turn. Swipe the right half
+to turn and look around while walking. Lift your thumb to stop.
+
+The bottom-right buttons give you **Dash** and **Blink** (they share a recharge),
+plus **Drift**, **Burst**, and **Giant** once bought in the shop. Each button shows
+its remaining recharge time. **Pause** opens the sound and fullscreen controls
+(fullscreen is only offered on browsers that support it). Switching apps pauses
+the run, and the shop scrolls normally with a swipe.
+
 The whole game is one file, `index.html`. To run it locally:
 
 ```

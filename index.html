@@ -1,5 +1,6 @@
 <meta charset="utf-8">
 <title>Starfall Keeper</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,18 +21,19 @@
     --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   }
   [hidden] { display: none !important; }
-  html, body { height: 100%; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
   body {
     background: var(--void);
     color: var(--ink);
     font-family: var(--font-mono);
     overflow: hidden;
-    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
   }
   #game { position: fixed; inset: 0; }
-  #game canvas { display: block; width: 100%; height: 100%; }
+  #game canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
   .label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); }
   kbd {
@@ -77,16 +79,22 @@
   #flash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(255,90,110,0.55)); opacity: 0; transition: opacity .5s; }
   #flash.on { opacity: 1; transition: none; }
 
-  /* Touch joystick */
-  #joy { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,0.04); pointer-events: none; }
+  /* Two-thumb controls; the canvas owns gestures, never the scrolling menus. */
+  #touch-controls { position: fixed; inset: 0; pointer-events: none; }
+  #touch-controls button { pointer-events: auto; touch-action: none; }
+  #joy { position: fixed; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 1px solid var(--line); background: rgba(11,10,31,0.4); pointer-events: none; }
   #joy i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(241,237,255,0.35); }
-  #dashbtn {
-    position: fixed; width: 78px; height: 78px; border-radius: 50%;
-    right: calc(max(16px, env(safe-area-inset-right, 0px)) + 6px);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
-    border: 1px solid var(--mint); background: rgba(110,240,194,0.12); color: var(--mint);
-    font: 600 13px var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
-  }
+  #joy.rest { left: max(82px, calc(env(safe-area-inset-left, 0px) + 66px)) !important; top: auto !important; bottom: calc(env(safe-area-inset-bottom, 0px) + 45px); margin-bottom: 0; opacity: .6; }
+  #joy.rest::after { content: 'STEER'; position: absolute; top: -23px; width: 100%; text-align: center; font-size: 10px; letter-spacing: .18em; color: var(--dim); }
+  .touch-actions { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); display: grid; grid-template-columns: repeat(2, 64px); gap: 8px; align-items: end; }
+  .touch-actions button { min-height: 56px; border-radius: 18px; border: 1px solid var(--gold); background: rgba(20,16,50,.85); color: var(--gold); font: 600 11px var(--font-mono); }
+  .touch-actions button span { display: block; margin-top: 3px; font-size: 10px; color: var(--dim); }
+  .touch-actions #dashbtn { grid-column: 2; grid-row: 3; min-height: 72px; border-color: var(--mint); color: var(--mint); }
+  .touch-actions #blinkbtn { grid-column: 1; grid-row: 3; min-height: 64px; border-color: var(--mint); color: var(--mint); }
+  #pausebtn { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 102px); min-height: 44px; color: var(--ink); background: var(--panel); }
+  #lookhint { position: absolute; right: 28px; bottom: calc(env(safe-area-inset-bottom, 0px) + 238px); color: var(--dim); font-size: 10px; letter-spacing: .1em; }
+  #touch-controls button.cool { opacity: .55; }
+  .touch-actions button:active { background: rgba(110,240,194,.25); }
 
   /* Overlay card */
   .overlay {
@@ -97,6 +105,7 @@
     padding-right: max(16px, env(safe-area-inset-right, 0px));
     background: radial-gradient(ellipse at 50% 60%, rgba(11,10,31,0.15), rgba(11,10,31,0.7));
     overflow-y: auto;
+    touch-action: pan-y; overscroll-behavior: contain;
   }
   .card {
     width: 100%; max-width: 30rem; display: grid; gap: 16px;
@@ -135,16 +144,6 @@
   .hud-bottom { gap: 10px; flex-wrap: wrap; align-items: center; }
   .ab { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(11,10,31,0.5); border: 1px solid var(--line); }
   .ab .meter { width: 56px; }
-  .touch-ab {
-    position: fixed; width: 60px; height: 60px; border-radius: 50%;
-    right: calc(max(16px, env(safe-area-inset-right, 0px)) + 15px);
-    border: 1px solid var(--gold); background: rgba(255,207,90,0.12); color: var(--gold);
-    font: 600 11px var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
-  }
-  #burstbtn { bottom: calc(env(safe-area-inset-bottom, 0px) + 164px); }
-  #driftbtn { bottom: calc(env(safe-area-inset-bottom, 0px) + 236px); }
-  #giantbtn { bottom: calc(env(safe-area-inset-bottom, 0px) + 308px); }
-  .touch-ab.cool { opacity: .35; }
   .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .ghost.big { padding: 13px 22px; font-size: 13px; color: var(--ink); }
   .best .dust b, .dust { color: var(--gold); }
@@ -160,7 +159,7 @@
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
   .tab { font: 600 12px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
   .tab[aria-selected="true"] { color: #1b1300; background: var(--gold); border-color: var(--gold); }
-  .items { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 10px; padding-right: 4px; min-height: 0; align-content: start; }
+  .items { overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr)); gap: 10px; padding-right: 4px; min-height: 0; align-content: start; }
   .slot-head { grid-column: 1 / -1; padding-top: 6px; }
   .item { display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(255,255,255,0.045); border: 1px solid transparent; }
   .item.owned { border-color: rgba(110,240,194,0.3); }
@@ -179,6 +178,29 @@
   .buy:focus-visible, .tab:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
   @media (max-width: 420px) { .card { padding: 22px 18px; } .result b { font-size: 17px; } }
+  @media (pointer: coarse) {
+    .ghost, .tab, .buy { min-height: 44px; }
+    .hud-bottom { display: none; }
+    .lives { flex-wrap: wrap; max-width: 108px; margin-left: auto; gap: 5px; }
+    .lives span { width: 10px; height: 10px; }
+    .hud-top { gap: 6px; }
+    .combo-bar { width: 42px; }
+    .dust-hud { font-size: 11px; }
+    .time b { font-size: 16px; }
+    .card { gap: 13px; }
+    .card.shop { height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px); gap: 10px; padding: 18px; }
+    .tabs { flex-wrap: nowrap; overflow-x: auto; touch-action: pan-x; padding-bottom: 4px; }
+    .tab { flex: none; padding: 8px 12px; }
+    #shop h2 { font-size: 22px; }
+  }
+  @media (pointer: coarse) and (max-height: 500px) {
+    .card:not(.shop) { padding: 20px; }
+    .card.shop { padding: 12px 18px; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+    .shop .collect { display: none; }
+    .shop .items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #lookhint { bottom: auto; top: 44%; right: 180px; }
+    #pausebtn { top: calc(env(safe-area-inset-top, 0px) + 64px); right: auto; left: 50%; transform: translateX(-50%); }
+  }
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
 </style>
 
@@ -205,11 +227,18 @@
   </div>
 </div>
 
-<div id="joy" hidden><i></i></div>
-<button id="dashbtn" type="button" hidden>Dash</button>
-<button id="burstbtn" class="touch-ab" type="button" hidden>Burst</button>
-<button id="driftbtn" class="touch-ab" type="button" hidden>Drift</button>
-<button id="giantbtn" class="touch-ab" type="button" hidden>Giant</button>
+<div id="touch-controls" hidden>
+  <div id="joy" class="rest" aria-hidden="true"><i></i></div>
+  <div id="lookhint" aria-hidden="true">SWIPE TO LOOK</div>
+  <button id="pausebtn" class="ghost" type="button">Ⅱ Pause</button>
+  <div class="touch-actions">
+    <button id="driftbtn" type="button" hidden>Drift<span>Ready</span></button>
+    <button id="burstbtn" type="button" hidden>Burst<span>Ready</span></button>
+    <button id="giantbtn" type="button" hidden>Giant<span>Ready</span></button>
+    <button id="blinkbtn" type="button">Blink<span>Ready</span></button>
+    <button id="dashbtn" type="button">Dash<span>Ready</span></button>
+  </div>
+</div>
 
 <section class="overlay" id="overlay">
   <div class="card">
@@ -1060,6 +1089,13 @@ function setMuted(m) {
 // ---------- input ----------
 const keys = new Set();
 const joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 };
+const look = { id: null, x: 0, y: 0 };
+function resetTouch() {
+  for (const id of [joy.id, look.id]) if (id !== null && cv.hasPointerCapture(id)) cv.releasePointerCapture(id);
+  joy.active = false; joy.id = null; joy.x = joy.y = 0; look.id = null;
+  $('joy').classList.add('rest');
+  $('joy').firstElementChild.style.transform = '';
+}
 addEventListener('keydown', (e) => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   keys.add(e.code);
@@ -1094,7 +1130,7 @@ function lockMouse() {
 }
 function unlockMouse() { if (document.pointerLockElement) document.exitPointerLock?.(); }
 cv.addEventListener('mousemove', (e) => {
-  if (state !== 'play' || paused) return;
+  if (coarse || state !== 'play' || paused) return;
   mouse.dx += e.movementX || 0;
   mouse.pitch = THREE.MathUtils.clamp(mouse.pitch - (e.movementY || 0) * 0.003, -0.4, 0.6);
 });
@@ -1105,13 +1141,26 @@ document.addEventListener('pointerlockchange', () => {
 cv.addEventListener('pointerdown', (e) => {
   if (e.button === 2) { e.preventDefault(); blink(); return; }
   if (e.pointerType === 'mouse') { if (state === 'play' && !paused) lockMouse(); return; }
-  if (state !== 'play' || paused || joy.active) return;
-  joy.active = true; joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joy.x = joy.y = 0;
-  const el = $('joy'); el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px'; el.hidden = false;
-  el.firstElementChild.style.transform = '';
+  if (state !== 'play' || paused) return;
+  if (e.clientX < innerWidth / 2) {
+    if (joy.active) return;
+    joy.active = true; joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joy.x = joy.y = 0;
+    const el = $('joy'); el.classList.remove('rest'); el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
+    el.firstElementChild.style.transform = '';
+  } else {
+    if (look.id !== null) return;
+    look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY;
+  }
   cv.setPointerCapture?.(e.pointerId);
 });
 cv.addEventListener('pointermove', (e) => {
+  if (state !== 'play' || paused) return;
+  if (e.pointerId === look.id) {
+    mouse.dx += e.clientX - look.x;
+    mouse.pitch = THREE.MathUtils.clamp(mouse.pitch - (e.clientY - look.y) * 0.003, -0.4, 0.6);
+    look.x = e.clientX; look.y = e.clientY;
+    return;
+  }
   if (!joy.active || e.pointerId !== joy.id) return;
   let dx = e.clientX - joy.ox, dy = e.clientY - joy.oy;
   const len = Math.hypot(dx, dy), max = 50;
@@ -1119,13 +1168,20 @@ cv.addEventListener('pointermove', (e) => {
   joy.x = dx / max; joy.y = dy / max;
   $('joy').firstElementChild.style.transform = `translate(${dx}px, ${dy}px)`;
 });
-const endJoy = (e) => { if (e.pointerId !== joy.id) return; joy.active = false; joy.x = joy.y = 0; $('joy').hidden = true; };
+const endJoy = (e) => {
+  if (e.pointerId === look.id) look.id = null;
+  if (e.pointerId !== joy.id) return;
+  joy.active = false; joy.id = null; joy.x = joy.y = 0;
+  $('joy').classList.add('rest'); $('joy').firstElementChild.style.transform = '';
+};
 cv.addEventListener('pointerup', endJoy);
 cv.addEventListener('pointercancel', endJoy);
-$('dashbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'play' && !paused) tryDash(); });
-$('burstbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (!paused) useBurst(); });
-$('driftbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (!paused) useDrift(); });
-$('giantbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (!paused) useGiant(); });
+cv.addEventListener('lostpointercapture', endJoy);
+for (const [id, action] of [['dashbtn', tryDash], ['blinkbtn', blink], ['burstbtn', useBurst], ['driftbtn', useDrift], ['giantbtn', useGiant]]) {
+  $(id).addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'play' && !paused) action(); });
+  $(id).addEventListener('click', (e) => { if (e.detail === 0 && state === 'play' && !paused) action(); });
+}
+$('pausebtn').addEventListener('click', () => setPaused(true));
 
 function readInput() {
   let fwd = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
@@ -1133,9 +1189,9 @@ function readInput() {
   if (joy.active) {
     const mag = Math.min(1, Math.hypot(joy.x, joy.y));
     if (mag > 0.18) {
-      const ang = Math.atan2(-joy.x, -joy.y); // 0 = push up = forward, + = left
-      turn = THREE.MathUtils.clamp(ang * 1.6, -1, 1);
-      fwd = mag * Math.max(0.25, Math.cos(ang * 0.8));
+      // Up/down walks (including reverse); left/right turns without forced movement.
+      turn = -joy.x;
+      fwd = -joy.y;
     }
   }
   return { fwd, turn };
@@ -1280,7 +1336,7 @@ const SHOP = [
   { id: 'hearts', tab: 'up', name: 'Heart Finder', max: 3, base: 20, info: 'Hull repairs show up more often.', fx: (l) => `one every ${Math.round(24 * (1 - 0.2 * l))} s` },
   { id: 'close', tab: 'up', name: 'Daredevil', max: 8, base: 12, g: 1.4, info: 'Bigger bonus for close calls.', fx: (l) => `${1 + l}× close-call points` },
   { id: 'shine', tab: 'up', name: 'Shiny Shards', max: 10, base: 22, g: 1.4, info: 'Every shard is worth more points.', fx: (l) => `+${l * 20}% shard points` },
-  { id: 'farblink', tab: 'up', name: 'Far Blink', max: 5, base: 18, g: 1.5, info: 'Right-click blink jumps further.', fx: (l) => `${3 + l} m blink` },
+  { id: 'farblink', tab: 'up', name: 'Far Blink', max: 5, base: 18, g: 1.5, info: 'Blink jumps further.', fx: (l) => `${3 + l} m blink` },
   { id: 'powercd', tab: 'up', name: 'Quick Powers', max: 5, base: 40, g: 1.55, info: 'Drift, Burst and Giant recharge faster.', fx: (l) => `-${l * 12}% recharge` },
   { id: 'giantlen', tab: 'up', name: 'Bigger Giant', max: 5, base: 25, g: 1.5, info: 'Giant Pip lasts longer (needs Giant Pip).', fx: (l) => `${6 + 2 * l} s giant` },
   { id: 'piggy', tab: 'up', name: 'Piggy Bank', max: 20, base: 30, g: 1.25, info: 'Bonus stardust at the end of every run.', fx: (l) => `+${l * 4} stardust per run` },
@@ -1290,10 +1346,10 @@ const SHOP = [
   // abilities (one-time)
   { id: 'shield', tab: 'ab', name: 'Bubble Shield', max: 1, base: 60, info: 'Start each run inside a bubble that blocks one hit.' },
   { id: 'revive', tab: 'ab', name: 'Second Wind', max: 1, base: 120, info: 'Once per run, Pip gets back up with 1 hull instead of losing.' },
-  { id: 'drift', tab: 'ab', name: 'Time Drift', max: 1, base: 90, info: 'Press <b>Q</b> to slow every falling meteor for 4 s. Recharges in 25 s.' },
-  { id: 'burst', tab: 'ab', name: 'Star Burst', max: 1, base: 150, info: 'Press <b>E</b> to blast every meteor out of the sky. Recharges in 35 s.' },
+  { id: 'drift', tab: 'ab', name: 'Time Drift', max: 1, base: 90, info: `${coarse ? 'Tap <b>Drift</b>' : 'Press <b>Q</b>'} to slow every falling meteor for 4 s. Recharges in 25 s.` },
+  { id: 'burst', tab: 'ab', name: 'Star Burst', max: 1, base: 150, info: `${coarse ? 'Tap <b>Burst</b>' : 'Press <b>E</b>'} to blast every meteor out of the sky. Recharges in 35 s.` },
   { id: 'beacon', tab: 'ab', name: 'Shard Beacons', max: 1, base: 35, info: 'Beams of light mark every shard, even past the horizon.' },
-  { id: 'giant', tab: 'ab', name: 'Giant Pip', max: 1, base: 130, info: 'Press <b>G</b> to grow huge for 6 s. Meteors bounce off you, you stomp trees flat, and you grab shards from much further away. While giant, shards show up <b>50% faster</b>. Recharges in 30 s.' },
+  { id: 'giant', tab: 'ab', name: 'Giant Pip', max: 1, base: 130, info: `${coarse ? 'Tap <b>Giant</b>' : 'Press <b>G</b>'} to grow huge for 6 s. Meteors bounce off you, you stomp trees flat, and you grab shards from much further away. While giant, shards show up <b>50% faster</b>. Recharges in 30 s.` },
   { id: 'skate', tab: 'ab', name: 'Skateboard', max: 1, base: 80, info: 'Pip rides a skateboard. Dashes go <b>60% faster</b> and throw sparks off the wheels.' },
   { id: 'buddy', tab: 'help', name: 'Star Buddies', max: 8, base: 90, g: 1.5, info: 'Little star helpers circle Pip and fly off to grab nearby shards for you. Each level adds another helper.', fx: (l) => `${l} helper${l === 1 ? '' : 's'}` },
   { id: 'wings', tab: 'help', name: 'Helper Wings', max: 5, base: 40, g: 1.5, info: 'Your Star Buddies fly faster and rest less between grabs.', fx: (l) => `+${l * 25}% helper speed` },
@@ -1523,7 +1579,7 @@ try { best = Number(localStorage.getItem('starfall-keeper-best')) || 0; } catch 
 $('best').textContent = best;
 
 if (coarse) {
-  $('keys').innerHTML = '<li><span>Drag anywhere to steer Pip.</span></li><li><span>Tap <b>Dash</b> to burst forward; you can\'t be hit mid-dash.</span></li><li><span>Grab shards within 3 s of each other to raise the multiplier, up to ×8.</span></li>';
+  $('keys').innerHTML = '<li><span><b>Left thumb:</b> drag up/down to walk, left/right to turn.</span></li><li><span><b>Right thumb:</b> swipe the sky to turn and look around.</span></li><li><span><b>Dash</b> through danger or <b>Blink</b> ahead instantly. They share a recharge.</span></li><li><span>Both portrait and landscape work. Tap <b>Pause</b> for sound and fullscreen.</span></li>';
   document.querySelectorAll('.desk').forEach((k) => { k.hidden = true; });
 }
 
@@ -1545,7 +1601,8 @@ function start() {
   $('overlay').hidden = true;
   $('shop').hidden = true;
   $('hud').hidden = false;
-  $('dashbtn').hidden = !coarse;
+  $('touch-controls').hidden = !coarse;
+  resetTouch();
   $('ab-drift').hidden = !lv('drift');
   $('ab-burst').hidden = !lv('burst');
   $('driftbtn').hidden = !(coarse && lv('drift'));
@@ -1561,8 +1618,9 @@ function setPaused(v) {
   if (state !== 'play') v = false;
   paused = v;
   $('pause').hidden = !v;
+  $('touch-controls').hidden = !coarse || v || state !== 'play';
   mouse.dx = 0;
-  if (v) { keys.clear(); joy.active = false; $('joy').hidden = true; unlockMouse(); }
+  if (v) { keys.clear(); resetTouch(); unlockMouse(); }
   else lockMouse();
 }
 $('start').addEventListener('click', start);
@@ -1606,7 +1664,8 @@ function gameOver() {
   burst(player.position, 70, WHITE, 6, 1.2, 0.6, P.p, 1);
   burst(player.position, 40, CORAL, 4, 1.0, 0.8, P.p, 1);
   sfx.over();
-  $('dashbtn').hidden = $('driftbtn').hidden = $('burstbtn').hidden = $('giantbtn').hidden = true; G.giantT = 0; for (const b of buddies) b.g.visible = false; joy.active = false; $('joy').hidden = true;
+  $('touch-controls').hidden = true; resetTouch();
+  G.giantT = 0; for (const b of buddies) b.g.visible = false;
   const isBest = G.score > best;
   if (isBest) { best = G.score; try { localStorage.setItem('starfall-keeper-best', String(best)); } catch {} }
   const earned = Math.floor(G.dust) + Math.floor(G.time / 10) * (1 + lv('survivor')) + 4 * lv('piggy') + 2 * LANDMARKS.filter((m) => lv('home:' + m.key)).length;
@@ -1901,6 +1960,14 @@ function updateHud() {
   const fill = $('dashfill');
   fill.style.width = (100 * (1 - P.dashCD / S.dashCD)) + '%';
   fill.classList.toggle('ready', P.dashCD <= 0);
+  if (coarse) {
+    for (const [id, cd] of [['dashbtn', P.dashCD], ['blinkbtn', P.dashCD], ['driftbtn', G.driftCD], ['burstbtn', G.burstCD], ['giantbtn', G.giantCD]]) {
+      const b = $(id), label = cd > 0 ? `${Math.ceil(cd)}s` : 'Ready';
+      if (b.lastElementChild.textContent !== label) b.lastElementChild.textContent = label;
+      b.classList.toggle('cool', cd > 0);
+      b.setAttribute('aria-disabled', String(cd > 0));
+    }
+  }
   if (lv('drift')) {
     const f = $('driftfill');
     f.style.width = (G.driftT > 0 ? 100 * G.driftT / 4 : 100 * (1 - G.driftCD / (25 * S.abCD))) + '%';
@@ -1942,8 +2009,14 @@ renderer.setAnimationLoop((now) => {
   renderer.render(scene, camera);
 });
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+function resize() {
+  resetTouch(); mouse.dx = 0;
+  camera.aspect = innerWidth / innerHeight;
+  // A little more peripheral vision on a tall phone, without changing desktop framing.
+  camera.fov = coarse && camera.aspect < 1 ? 70 : 55;
+  camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-});
+}
+addEventListener('resize', resize);
+resize();
 </script>
