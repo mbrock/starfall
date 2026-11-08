@@ -26,10 +26,14 @@ its remaining recharge time. **Pause** opens the sound and fullscreen controls
 (fullscreen is only offered on browsers that support it). Switching apps pauses
 the run, and the shop scrolls normally with a swipe.
 
-The whole game is one file, `index.html`. To run it locally:
+## Running and changing it
+
+There is no build step: `index.html`, `style.css` and the ES modules in `src/` are served as they are.
+To run it locally:
 
 ```
 python3 -m http.server 8765
 ```
 
-then open http://localhost:8765/
+then open http://localhost:8765/ (add `?debug` to get the game's state on `window.starfall`).
+[AGENTS.md](AGENTS.md) describes the layout and how to add upgrades, abilities, cosmetics and landmarks.
