@@ -225,7 +225,7 @@
       <li><kbd>Mouse</kbd> <span>turn and look around; <kbd>Esc</kbd> frees the cursor</span></li>
       <li><kbd>Right-click</kbd> <span>blink 3 m forward instantly (uses your dash)</span></li>
       <li><kbd>Q</kbd> <kbd>E</kbd> <kbd>G</kbd> <span>abilities, once you buy them in the shop</span></li>
-      <li><kbd>P</kbd> <span>pause</span> &nbsp; <kbd>M</kbd> <span>sound on/off</span></li>
+      <li><kbd>P</kbd> <span>pause</span> &nbsp; <kbd>M</kbd> <span>sound on/off</span> &nbsp; <kbd>F</kbd> <span>fullscreen</span></li>
       <li><span>Grab shards within 3 s of each other to raise the multiplier, up to ×8.</span></li>
     </ul>
     <div class="row">
@@ -233,6 +233,7 @@
         <button class="btn" id="start" type="button">Start</button>
         <button class="ghost big" id="openshop" type="button">Shop</button>
         <button class="ghost" id="musicbtn" type="button">♪ Music on</button>
+        <button class="ghost fsbtn" type="button">⛶ Fullscreen</button>
       </div>
       <span class="best">Best <b id="best">0</b> · <span class="dust"><b id="dustmenu">0</b> stardust</span></span>
     </div>
@@ -262,6 +263,7 @@
   <div class="card small">
     <h2>Paused</h2>
     <button class="btn" id="resume" type="button">Resume</button>
+    <button class="ghost fsbtn" type="button">⛶ Fullscreen</button>
     <button class="ghost" id="mute" type="button">Sound: on</button>
   </div>
 </section>
@@ -1001,6 +1003,23 @@ const unlockAudio = (e) => {
 };
 addEventListener('pointerdown', unlockAudio);
 addEventListener('keydown', unlockAudio);
+// ---------- fullscreen ----------
+const fsEl = document.documentElement;
+const canFS = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
+const fsNow = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFullscreen() {
+  if (!canFS) return;
+  try {
+    if (fsNow()) { const p = (document.exitFullscreen || document.webkitExitFullscreen).call(document); if (p && p.catch) p.catch(() => {}); }
+    else { const p = (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); }
+  } catch {}
+}
+function renderFS() { document.querySelectorAll('.fsbtn').forEach((b) => { b.hidden = !canFS; b.textContent = fsNow() ? '⛶ Exit fullscreen' : '⛶ Fullscreen'; }); }
+document.querySelectorAll('.fsbtn').forEach((b) => b.addEventListener('click', toggleFullscreen));
+document.addEventListener('fullscreenchange', renderFS);
+document.addEventListener('webkitfullscreenchange', renderFS);
+renderFS();
+
 $('musicbtn').addEventListener('click', () => {
   const wasSilent = !actx || !music.active;
   initAudio();
@@ -1023,6 +1042,7 @@ addEventListener('keydown', (e) => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   keys.add(e.code);
   if (e.code === 'KeyM') setMuted(!muted);
+  if (e.code === 'KeyF' && !e.repeat) toggleFullscreen();
   if (state === 'play' && e.code === 'KeyP') setPaused(!paused);
   if (state === 'play' && e.code === 'Escape') setPaused(true);
   if (state === 'play' && !paused && (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight')) tryDash();
