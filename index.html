@@ -153,6 +153,9 @@
   .card.shop { max-width: 56rem; max-height: calc(100dvh - 40px); grid-template-rows: auto auto minmax(0, 1fr) auto; overflow: hidden; }
   .shop-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .wallet { font-size: 13px; color: var(--dim); }
+  .collect { display: flex; align-items: center; gap: 10px; }
+  .collect .cbar { flex: 1; height: 5px; border-radius: 99px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .collect .cbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), #6ef0c2); border-radius: 99px; }
   .wallet b { font: 800 24px var(--font-display); color: var(--gold); font-variant-numeric: tabular-nums; margin-right: 4px; }
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
   .tab { font: 600 12px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
@@ -246,9 +249,12 @@
       <h2>Pip's Shop</h2>
       <span class="wallet"><b id="wallet">0</b>stardust</span>
     </div>
+    <div class="collect"><span class="label" id="collectlabel">Collection 0 / 0</span><span class="cbar"><i id="collectbar"></i></span></div>
     <div class="tabs" role="tablist">
       <button class="tab" type="button" role="tab" data-tab="up">Upgrades</button>
       <button class="tab" type="button" role="tab" data-tab="ab">Abilities</button>
+      <button class="tab" type="button" role="tab" data-tab="help">Helpers</button>
+      <button class="tab" type="button" role="tab" data-tab="home">Planet</button>
       <button class="tab" type="button" role="tab" data-tab="style">Style</button>
     </div>
     <div class="items" id="items"></div>
@@ -670,20 +676,24 @@ const hats = {};
       hats.bunny.add(e, i);
     }
   }
-  for (const k in hats) { hats[k].visible = false; pipBody.add(hats[k]); }
+  for (const k in hats) {
+    hats[k].visible = false; pipBody.add(hats[k]);
+    const m0 = hats[k].children[0]?.material;
+    if (m0) { hats[k].userData.tint = m0; hats[k].userData.baseColor = m0.color.getHex(); }
+  }
 }
 const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.8, 24, 16), new THREE.MeshBasicMaterial({ color: 0x6ef0c2, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
 bubble.position.y = 0.05;
 player.add(bubble);
 
 // Star Buddy (shop ability): a little star that flies off to grab shards
-const BUDDY_COLORS = [[0xbffff0, 0x6ef0c2], [0xfff1b8, 0xffc24a], [0xf0d8ff, 0xb08aff]];
+const BUDDY_COLORS = [[0xbffff0, 0x6ef0c2], [0xfff1b8, 0xffc24a], [0xf0d8ff, 0xb08aff], [0xffd0d8, 0xff5a6e], [0xd0ecff, 0x5ab8ff], [0xe8ffd0, 0x9be05a], [0xffe0c8, 0xff8a3a], [0xffffff, 0xd8dde8]];
 const buddies = BUDDY_COLORS.map(([c, g], k) => {
   const grp = new THREE.Group();
   const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: c }));
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: g, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   glow.scale.setScalar(1.1); grp.add(core, glow); grp.visible = false; scene.add(grp);
-  return { g: grp, core, color: new THREE.Color(g), target: null, rest: 0, phase: k * Math.PI * 2 / 3 };
+  return { g: grp, core, color: new THREE.Color(g), target: null, rest: 0, phase: k * Math.PI * 2 / BUDDY_COLORS.length, ring: k < 4 ? 0.9 : 1.4 };
 });
 
 // skateboard (shop item)
@@ -1166,28 +1176,104 @@ function useBurst() {
   if (n) { G.score += 3 * n; popup(`star burst +${3 * n}`, player.position.clone().addScaledVector(P.p, 1.1), 'gold'); }
 }
 
+
+// ---------- planet landmarks (shop: Planet tab) ----------
+const LANDMARKS = [
+  { key: 'house', name: 'Cozy House', base: 40 },
+  { key: 'lamp', name: 'Star Lamp', base: 25 },
+  { key: 'flag', name: 'Pip Flag', base: 20 },
+  { key: 'mushroom', name: 'Giant Mushroom', base: 30 },
+  { key: 'snowman', name: 'Snowman', base: 30 },
+  { key: 'tent', name: 'Camping Tent', base: 35 },
+  { key: 'statue', name: 'Pip Statue', base: 60 },
+  { key: 'windmill', name: 'Windmill', base: 70 },
+  { key: 'tower', name: 'Castle Tower', base: 80 },
+  { key: 'rocket', name: 'Rocket Ship', base: 100 },
+  { key: 'lighthouse', name: 'Lighthouse', base: 110 },
+  { key: 'telescope', name: 'Telescope', base: 55 },
+  { key: 'monument', name: 'Shard Monument', base: 150 },
+  { key: 'wheel', name: 'Ferris Wheel', base: 180 },
+  { key: 'fountain', name: 'Fountain', base: 75 },
+  { key: 'treehouse', name: 'Tree House', base: 90 },
+];
+const landmarkObjs = {};
+const spinners = [];
+{
+  const M = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
+  const glowM = (c) => new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: c, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  const wood = mat(0x8a5a3a), white = mat(0xf4f0ff), red = mat(0xff5a6e), gold = mat(0xffcf5a, { metalness: 0.6, roughness: 0.3 }), stone = mat(0x9a96b8), dark = mat(0x3a3570), blue = mat(0x5ab8ff), green = mat(0x46b88f);
+  const B = {
+    house(g) { g.add(M(new THREE.BoxGeometry(1, 0.8, 0.9), mat(0xffe0b8), 0, 0.4, 0)); const r = M(new THREE.ConeGeometry(0.85, 0.6, 4), red, 0, 1.1, 0); r.rotation.y = Math.PI / 4; g.add(r); g.add(M(new THREE.BoxGeometry(0.22, 0.4, 0.05), wood, 0, 0.2, 0.46)); g.add(M(new THREE.BoxGeometry(0.2, 0.2, 0.05), new THREE.MeshBasicMaterial({ color: 0xffd36b }), 0.3, 0.5, 0.46)); },
+    lamp(g) { g.add(M(new THREE.CylinderGeometry(0.04, 0.06, 1.6, 6), dark, 0, 0.8, 0)); g.add(M(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe08a }), 0, 1.7, 0)); const gl = glowM(0xffc04a); gl.scale.setScalar(1.6); gl.position.y = 1.7; g.add(gl); },
+    flag(g) { g.add(M(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6), white, 0, 0.9, 0)); const f = M(new THREE.BoxGeometry(0.7, 0.42, 0.02), mat(0x9a7bff), 0.36, 1.55, 0); g.add(f); g.add(M(new THREE.SphereGeometry(0.08, 8, 6), white, 0.36, 1.55, 0.02)); spinners.push({ o: f, kind: 'wave' }); },
+    mushroom(g) { g.add(M(new THREE.CylinderGeometry(0.15, 0.2, 0.7, 8), white, 0, 0.35, 0)); const c = M(new THREE.SphereGeometry(0.6, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), red, 0, 0.65, 0); g.add(c); for (let i = 0; i < 6; i++) { const a = i * 1.05; g.add(M(new THREE.SphereGeometry(0.08, 6, 5), white, Math.cos(a) * 0.38, 1.05, Math.sin(a) * 0.38)); } },
+    snowman(g) { g.add(M(new THREE.SphereGeometry(0.42, 12, 10), white, 0, 0.4, 0)); g.add(M(new THREE.SphereGeometry(0.3, 12, 10), white, 0, 1.0, 0)); g.add(M(new THREE.SphereGeometry(0.21, 12, 10), white, 0, 1.45, 0)); const n = M(new THREE.ConeGeometry(0.05, 0.22, 6), mat(0xff8a3a), 0, 1.45, 0.25); n.rotation.x = Math.PI / 2; g.add(n); g.add(M(new THREE.CylinderGeometry(0.16, 0.16, 0.24, 10), dark, 0, 1.72, 0)); },
+    tent(g) { const t = M(new THREE.ConeGeometry(0.75, 1.0, 4), mat(0xff8a3a), 0, 0.5, 0); t.rotation.y = Math.PI / 4; g.add(t); g.add(M(new THREE.BoxGeometry(0.3, 0.45, 0.05), dark, 0, 0.22, 0.42)); },
+    statue(g) { g.add(M(new THREE.BoxGeometry(0.8, 0.5, 0.8), stone, 0, 0.25, 0)); g.add(M(new THREE.SphereGeometry(0.42, 16, 12), mat(0xc9c5e0, { metalness: 0.3 }), 0, 0.95, 0)); const tr = M(new THREE.TorusGeometry(0.37, 0.07, 6, 18), gold, 0, 0.82, 0); tr.rotation.x = Math.PI / 2; g.add(tr); },
+    windmill(g) { g.add(M(new THREE.CylinderGeometry(0.3, 0.45, 1.8, 6), mat(0xffe0b8), 0, 0.9, 0)); g.add(M(new THREE.ConeGeometry(0.38, 0.4, 6), red, 0, 2.0, 0)); const hub = new THREE.Group(); hub.position.set(0, 1.6, 0.36); for (let i = 0; i < 4; i++) { const bl = M(new THREE.BoxGeometry(0.14, 1.0, 0.03), white, 0, 0.5, 0); const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; arm.add(bl); hub.add(arm); } g.add(hub); spinners.push({ o: hub, kind: 'z', speed: 1.5 }); },
+    tower(g) { g.add(M(new THREE.CylinderGeometry(0.5, 0.55, 2.0, 10), stone, 0, 1.0, 0)); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(M(new THREE.BoxGeometry(0.16, 0.2, 0.16), stone, Math.cos(a) * 0.48, 2.1, Math.sin(a) * 0.48)); } g.add(M(new THREE.ConeGeometry(0.42, 0.7, 10), mat(0x7d63d8), 0, 2.55, 0)); g.add(M(new THREE.BoxGeometry(0.22, 0.4, 0.05), wood, 0, 0.2, 0.53)); },
+    rocket(g) { g.add(M(new THREE.CylinderGeometry(0.3, 0.3, 1.5, 12), white, 0, 1.0, 0)); g.add(M(new THREE.ConeGeometry(0.3, 0.6, 12), red, 0, 2.05, 0)); for (let i = 0; i < 3; i++) { const f = M(new THREE.BoxGeometry(0.05, 0.5, 0.35), red, 0, 0.45, 0); const a = i / 3 * Math.PI * 2; f.position.set(Math.cos(a) * 0.32, 0.45, Math.sin(a) * 0.32); f.rotation.y = -a; g.add(f); } const win = M(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 12), blue, 0, 1.4, 0.29); win.rotation.x = Math.PI / 2; g.add(win); const fl = glowM(0xff7a2a); fl.scale.setScalar(0.9); fl.position.y = 0.15; g.add(fl); },
+    lighthouse(g) { for (let i = 0; i < 4; i++) g.add(M(new THREE.CylinderGeometry(0.36 - i * 0.04, 0.4 - i * 0.04, 0.5, 12), i % 2 ? white : red, 0, 0.25 + i * 0.5, 0)); g.add(M(new THREE.CylinderGeometry(0.26, 0.26, 0.3, 10), new THREE.MeshBasicMaterial({ color: 0xffe08a }), 0, 2.15, 0)); g.add(M(new THREE.ConeGeometry(0.3, 0.3, 10), dark, 0, 2.45, 0)); const beam = new THREE.Group(); beam.position.y = 2.15; const bm = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); bm.rotation.z = Math.PI / 2; bm.position.x = 2; beam.add(bm); g.add(beam); spinners.push({ o: beam, kind: 'y', speed: 1.2 }); },
+    telescope(g) { for (let i = 0; i < 3; i++) { const l = M(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 5), wood, 0, 0.42, 0); const a = i / 3 * Math.PI * 2; l.position.set(Math.cos(a) * 0.2, 0.42, Math.sin(a) * 0.2); l.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4); g.add(l); } const t = M(new THREE.CylinderGeometry(0.1, 0.16, 1.1, 10), gold, 0, 1.0, 0.15); t.rotation.x = -0.9; g.add(t); },
+    monument(g) { g.add(M(new THREE.CylinderGeometry(0.5, 0.6, 0.4, 8), stone, 0, 0.2, 0)); const sh = M(new THREE.OctahedronGeometry(0.5, 0), mat(0xffd36b, { emissive: 0xffa21f, emissiveIntensity: 1.4, roughness: 0.3 }), 0, 1.2, 0); sh.scale.y = 1.4; g.add(sh); const gl = glowM(0xffb43a); gl.scale.setScalar(3); gl.position.y = 1.2; g.add(gl); spinners.push({ o: sh, kind: 'y', speed: 0.8 }); },
+    wheel(g) { for (const sd of [-1, 1]) { const l = M(new THREE.BoxGeometry(0.08, 1.9, 0.08), dark, 0.5 * sd * 0.5, 0.9, 0); l.rotation.z = 0.25 * sd; g.add(l); } const w = new THREE.Group(); w.position.y = 1.7; w.add(M(new THREE.TorusGeometry(1.0, 0.05, 6, 28), mat(0x9a7bff))); const cols = [0xff5a6e, 0xffcf5a, 0x6ef0c2, 0x5ab8ff, 0xff9ad5, 0x9be05a]; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const sp = M(new THREE.BoxGeometry(0.03, 1.0, 0.03), white, Math.cos(a) * 0.5, Math.sin(a) * 0.5, 0); sp.rotation.z = a + Math.PI / 2; w.add(sp); w.add(M(new THREE.BoxGeometry(0.22, 0.2, 0.22), mat(cols[i]), Math.cos(a), Math.sin(a), 0)); } g.add(w); spinners.push({ o: w, kind: 'z', speed: 0.5 }); },
+    fountain(g) { g.add(M(new THREE.CylinderGeometry(0.75, 0.8, 0.25, 16), stone, 0, 0.12, 0)); g.add(M(new THREE.CylinderGeometry(0.65, 0.65, 0.05, 16), mat(0x6ec8f0, { emissive: 0x2f86c9, emissiveIntensity: 0.4 }), 0, 0.24, 0)); g.add(M(new THREE.CylinderGeometry(0.1, 0.12, 0.7, 8), stone, 0, 0.55, 0)); g.add(M(new THREE.SphereGeometry(0.2, 10, 8), mat(0x9fe8ff, { emissive: 0x5ab8ff, emissiveIntensity: 0.6 }), 0, 0.95, 0)); g.userData.fountain = true; },
+    treehouse(g) { g.add(M(new THREE.CylinderGeometry(0.15, 0.22, 1.6, 7), wood, 0, 0.8, 0)); g.add(M(new THREE.BoxGeometry(0.8, 0.5, 0.7), mat(0xc98a5a), 0, 1.4, 0)); const r = M(new THREE.ConeGeometry(0.65, 0.4, 4), green, 0, 1.85, 0); r.rotation.y = Math.PI / 4; g.add(r); g.add(M(new THREE.IcosahedronGeometry(0.6, 0), mat(0x3fae7d), 0.5, 2.0, -0.2)); g.add(M(new THREE.IcosahedronGeometry(0.5, 0), mat(0x2e8f6b), -0.5, 1.9, 0.1)); },
+  };
+  LANDMARKS.forEach((m, i) => {
+    // spread evenly around the planet (golden-angle spiral), away from the start point
+    const y = 0.75 - 1.55 * (i + 0.5) / LANDMARKS.length, rr = Math.sqrt(1 - y * y), a = i * 2.39996 + 0.7;
+    const n = new V(Math.cos(a) * rr, y, Math.sin(a) * rr).normalize();
+    const g = new THREE.Group();
+    B[m.key](g);
+    g.position.copy(n).multiplyScalar(surfR(n) - 0.05);
+    g.quaternion.setFromUnitVectors(UP, n);
+    g.rotateY(a);
+    g.visible = false;
+    g.userData.n = n;
+    scene.add(g);
+    landmarkObjs[m.key] = g;
+    // clear the trees out of the way
+    for (const d of decor) if (chord(d.n, n) < 1.4) d.n.copy(randomUnit()), placeDecor(d, d.n);
+  });
+}
+function updateLandmarks(dt) {
+  for (const sp of spinners) {
+    if (sp.kind === 'z') sp.o.rotation.z += dt * sp.speed;
+    else if (sp.kind === 'y') sp.o.rotation.y += dt * sp.speed;
+    else sp.o.rotation.y = Math.sin(T * 3) * 0.25;
+  }
+  const f = landmarkObjs.fountain;
+  if (f.visible && Math.random() < 0.5) {
+    _b.copy(f.userData.n).multiplyScalar(surfR(f.userData.n) + 1.0);
+    emit(_b, _v.copy(f.userData.n).multiplyScalar(rand(1.5, 2.5)).add(randomUnit(_d).multiplyScalar(0.6)), _c.setHSL(0.55, 0.8, rand(0.7, 0.9)), rand(0.6, 0.9), 2);
+  }
+}
+
 // ---------- shop & save ----------
 const SHOP = [
   // upgrades (levels)
-  { id: 'speed', tab: 'up', name: 'Swift Feet', max: 5, base: 12, info: 'Pip walks faster.', fx: (l) => `+${l * 8}% speed` },
+  { id: 'speed', tab: 'up', name: 'Swift Feet', max: 8, base: 12, g: 1.5, info: 'Pip walks faster.', fx: (l) => `+${l * 8}% speed` },
   { id: 'dashcd', tab: 'up', name: 'Quick Recharge', max: 5, base: 15, info: 'Dash comes back sooner.', fx: (l) => `${(1.8 * (1 - 0.12 * l)).toFixed(2)} s cooldown` },
   { id: 'dashlen', tab: 'up', name: 'Long Dash', max: 3, base: 20, info: 'Dashes go further and keep you safe longer.', fx: (l) => `+${l * 25}% dash length` },
-  { id: 'hull', tab: 'up', name: 'Extra Hull', max: 3, base: 40, info: 'Start every run with more hull.', fx: (l) => `${3 + l} hull` },
-  { id: 'magnet', tab: 'up', name: 'Shard Magnet', max: 4, base: 18, info: 'Grab shards from further away, and nearby shards drift toward you.', fx: (l) => `${(1 + 0.37 * l).toFixed(2)}× reach` },
-  { id: 'luck', tab: 'up', name: 'Lucky Craters', max: 4, base: 18, info: 'Craters sometimes hold two shards.', fx: (l) => `${l * 15}% chance of a pair` },
-  { id: 'linger', tab: 'up', name: 'Lasting Glow', max: 3, base: 14, info: 'Shards stay longer before fading.', fx: (l) => `${(9 + 1.5 * l).toFixed(1)} s glow` },
-  { id: 'chain', tab: 'up', name: 'Chain Keeper', max: 4, base: 16, info: 'More time to reach the next shard in a chain.', fx: (l) => `${(3 + 0.75 * l).toFixed(2)} s window` },
-  { id: 'cap', tab: 'up', name: 'Bigger Multiplier', max: 3, base: 30, info: 'Raise the highest multiplier you can reach.', fx: (l) => `×${8 + 2 * l} max` },
-  { id: 'warn', tab: 'up', name: 'Early Warning', max: 3, base: 25, info: 'Meteors fall a little slower.', fx: (l) => `+${l * 8}% fall time` },
-  { id: 'shell', tab: 'up', name: 'Thick Shell', max: 3, base: 14, info: 'Stay untouchable longer after a hit.', fx: (l) => `${(1.6 + 0.5 * l).toFixed(1)} s safe` },
+  { id: 'hull', tab: 'up', name: 'Extra Hull', max: 7, base: 40, g: 1.5, info: 'Start every run with more hull.', fx: (l) => `${3 + l} hull` },
+  { id: 'magnet', tab: 'up', name: 'Shard Magnet', max: 8, base: 18, g: 1.45, info: 'Grab shards from further away, and nearby shards drift toward you.', fx: (l) => `${(1 + 0.37 * l).toFixed(2)}× reach` },
+  { id: 'luck', tab: 'up', name: 'Lucky Craters', max: 6, base: 18, g: 1.5, info: 'Craters sometimes hold two shards.', fx: (l) => `${l * 15}% chance of a pair` },
+  { id: 'linger', tab: 'up', name: 'Lasting Glow', max: 6, base: 14, g: 1.5, info: 'Shards stay longer before fading.', fx: (l) => `${(9 + 1.5 * l).toFixed(1)} s glow` },
+  { id: 'chain', tab: 'up', name: 'Chain Keeper', max: 8, base: 16, g: 1.45, info: 'More time to reach the next shard in a chain.', fx: (l) => `${(3 + 0.75 * l).toFixed(2)} s window` },
+  { id: 'cap', tab: 'up', name: 'Bigger Multiplier', max: 8, base: 30, g: 1.45, info: 'Raise the highest multiplier you can reach.', fx: (l) => `×${8 + 2 * l} max` },
+  { id: 'warn', tab: 'up', name: 'Early Warning', max: 6, base: 25, g: 1.5, info: 'Meteors fall a little slower.', fx: (l) => `+${l * 8}% fall time` },
+  { id: 'shell', tab: 'up', name: 'Thick Shell', max: 6, base: 14, g: 1.5, info: 'Stay untouchable longer after a hit.', fx: (l) => `${(1.6 + 0.5 * l).toFixed(1)} s safe` },
   { id: 'hearts', tab: 'up', name: 'Heart Finder', max: 3, base: 20, info: 'Hull repairs show up more often.', fx: (l) => `one every ${Math.round(24 * (1 - 0.2 * l))} s` },
-  { id: 'close', tab: 'up', name: 'Daredevil', max: 3, base: 12, info: 'Bigger bonus for close calls.', fx: (l) => `${1 + l}× close-call points` },
-  { id: 'shine', tab: 'up', name: 'Shiny Shards', max: 4, base: 22, info: 'Every shard is worth more points.', fx: (l) => `+${l * 20}% shard points` },
-  { id: 'farblink', tab: 'up', name: 'Far Blink', max: 3, base: 18, info: 'Right-click blink jumps further.', fx: (l) => `${3 + l} m blink` },
-  { id: 'powercd', tab: 'up', name: 'Quick Powers', max: 3, base: 40, info: 'Drift, Burst and Giant recharge faster.', fx: (l) => `-${l * 12}% recharge` },
-  { id: 'giantlen', tab: 'up', name: 'Bigger Giant', max: 3, base: 25, info: 'Giant Pip lasts longer (needs Giant Pip).', fx: (l) => `${6 + 2 * l} s giant` },
-  { id: 'piggy', tab: 'up', name: 'Piggy Bank', max: 4, base: 30, info: 'Bonus stardust at the end of every run.', fx: (l) => `+${l * 4} stardust per run` },
-  { id: 'dust', tab: 'up', name: 'Stardust Sieve', max: 4, base: 35, info: 'Earn more stardust from every shard.', fx: (l) => `+${l * 25}% stardust` },
+  { id: 'close', tab: 'up', name: 'Daredevil', max: 8, base: 12, g: 1.4, info: 'Bigger bonus for close calls.', fx: (l) => `${1 + l}× close-call points` },
+  { id: 'shine', tab: 'up', name: 'Shiny Shards', max: 10, base: 22, g: 1.4, info: 'Every shard is worth more points.', fx: (l) => `+${l * 20}% shard points` },
+  { id: 'farblink', tab: 'up', name: 'Far Blink', max: 5, base: 18, g: 1.5, info: 'Right-click blink jumps further.', fx: (l) => `${3 + l} m blink` },
+  { id: 'powercd', tab: 'up', name: 'Quick Powers', max: 5, base: 40, g: 1.55, info: 'Drift, Burst and Giant recharge faster.', fx: (l) => `-${l * 12}% recharge` },
+  { id: 'giantlen', tab: 'up', name: 'Bigger Giant', max: 5, base: 25, g: 1.5, info: 'Giant Pip lasts longer (needs Giant Pip).', fx: (l) => `${6 + 2 * l} s giant` },
+  { id: 'piggy', tab: 'up', name: 'Piggy Bank', max: 20, base: 30, g: 1.25, info: 'Bonus stardust at the end of every run.', fx: (l) => `+${l * 4} stardust per run` },
+  { id: 'steady', tab: 'up', name: 'Steady Hands', max: 3, base: 45, g: 1.7, info: 'Getting hit no longer wipes out your whole multiplier.', fx: (l) => `keep ${l * 25}% of it` },
+  { id: 'survivor', tab: 'up', name: "Survivor's Pay", max: 5, base: 28, g: 1.5, info: 'More stardust for every 10 s you survive.', fx: (l) => `${1 + l} per 10 s` },
+  { id: 'dust', tab: 'up', name: 'Stardust Sieve', max: 10, base: 35, g: 1.45, info: 'Earn more stardust from every shard.', fx: (l) => `+${l * 25}% stardust` },
   // abilities (one-time)
   { id: 'shield', tab: 'ab', name: 'Bubble Shield', max: 1, base: 60, info: 'Start each run inside a bubble that blocks one hit.' },
   { id: 'revive', tab: 'ab', name: 'Second Wind', max: 1, base: 120, info: 'Once per run, Pip gets back up with 1 hull instead of losing.' },
@@ -1196,7 +1282,10 @@ const SHOP = [
   { id: 'beacon', tab: 'ab', name: 'Shard Beacons', max: 1, base: 35, info: 'Beams of light mark every shard, even past the horizon.' },
   { id: 'giant', tab: 'ab', name: 'Giant Pip', max: 1, base: 130, info: 'Press <b>G</b> to grow huge for 6 s. Meteors bounce off you, you stomp trees flat, and you grab shards from much further away. While giant, shards show up <b>50% faster</b>. Recharges in 30 s.' },
   { id: 'skate', tab: 'ab', name: 'Skateboard', max: 1, base: 80, info: 'Pip rides a skateboard. Dashes go <b>60% faster</b> and throw sparks off the wheels.' },
-  { id: 'buddy', tab: 'ab', name: 'Star Buddies', max: 3, base: 90, info: 'Little star helpers circle Pip and fly off to grab nearby shards for you. Each level adds another helper.', fx: (l) => `${l} helper${l === 1 ? '' : 's'}` },
+  { id: 'buddy', tab: 'help', name: 'Star Buddies', max: 8, base: 90, g: 1.5, info: 'Little star helpers circle Pip and fly off to grab nearby shards for you. Each level adds another helper.', fx: (l) => `${l} helper${l === 1 ? '' : 's'}` },
+  { id: 'wings', tab: 'help', name: 'Helper Wings', max: 5, base: 40, g: 1.5, info: 'Your Star Buddies fly faster and rest less between grabs.', fx: (l) => `+${l * 25}% helper speed` },
+  { id: 'radar', tab: 'help', name: 'Helper Radar', max: 5, base: 35, g: 1.5, info: 'Your Star Buddies spot shards from further away.', fx: (l) => `${7 + 1.5 * l} m search range` },
+  { id: 'hearthelp', tab: 'help', name: 'Medic Buddies', max: 1, base: 120, info: 'Your Star Buddies also grab hull hearts for you when you are hurt.' },
   { id: 'goldrush', tab: 'ab', name: 'Gold Rush', max: 1, base: 75, info: 'About 1 in 8 crater shards is a big <b>golden shard</b> worth 5× points and stardust.' },
   { id: 'clover', tab: 'ab', name: 'Lucky Clover', max: 1, base: 55, info: 'When your hull is damaged, craters sometimes leave a heart instead of a shard.' },
   { id: 'headstart', tab: 'ab', name: 'Head Start', max: 1, base: 45, info: 'Begin each run already at ×3, with 8 s to grab your first shard.' },
@@ -1247,6 +1336,39 @@ const SHOP = [
   { id: 'world:candy', tab: 'style', slot: 'world', key: 'candy', name: 'Candy', base: 80, color: 0xff9ad5 },
   { id: 'world:lava', tab: 'style', slot: 'world', key: 'lava', name: 'Ember Rock', base: 90, color: 0xff7a2a },
 ];
+
+// ---------- lots and lots more stuff ----------
+for (const m of LANDMARKS) SHOP.push({ id: 'home:' + m.key, tab: 'home', name: m.name, base: m.base, max: 1, info: 'Builds it on your planet. Every landmark adds <b>+2 stardust</b> to each run.' });
+const MORE_SCARVES = [['Peach', 0xffb38a], ['Cherry', 0xd8233f], ['Ocean', 0x1f7fd1], ['Forest', 0x2e8f6b], ['Lemon', 0xfff05a], ['Plum', 0x7a2a8a], ['Teal', 0x1fb8b0], ['Coffee', 0x7a4a3a], ['Silver', 0xc9cdd8], ['Charcoal', 0x3a3a48], ['Tangerine', 0xff8a1f], ['Lavender', 0xc9a8ff], ['Bubblegum', 0xff7ad1], ['Ice', 0xbff4ff], ['Sunset', 0xff6a4a], ['Moss', 0x7a9a3a], ['Royal', 0x3a4ad8], ['Candy', 0xff4a9a], ['Sand', 0xe8cf9a], ['Neon', 0x5aff7a]];
+for (const [n, c] of MORE_SCARVES) SHOP.push({ id: 'scarf:' + n.toLowerCase(), tab: 'style', slot: 'scarf', key: n.toLowerCase(), name: n + ' scarf', base: 18, color: c });
+const MORE_BODIES = [['Lemon', 0xfff1a8], ['Sage', 0xb8d8a8], ['Coral', 0xff9a8a], ['Ice', 0xd8f4ff], ['Grape', 0x9a6ad8], ['Tangerine', 0xffb36a], ['Rose', 0xffb8d0], ['Cocoa', 0x8a5a4a], ['Ocean', 0x4a9ad8], ['Forest', 0x3a8a5a], ['Ruby', 0xd83a5a], ['Slate', 0x6a7088], ['Cream', 0xfff4e0], ['Neon', 0x8aff8a], ['Sunflower', 0xffd83a], ['Ghost', 0xe8e8f8]];
+for (const [n, c] of MORE_BODIES) SHOP.push({ id: 'body:' + n.toLowerCase(), tab: 'style', slot: 'body', key: n.toLowerCase(), name: n, base: 25, color: c });
+const HAT_TINTS = { party: [['Mint', 0x6ef0c2], ['Red', 0xff5a6e], ['Gold', 0xffcf5a], ['Blue', 0x5ab8ff], ['Pink', 0xff9ad5]], wizard: [['Red', 0xa8233f], ['Green', 0x2e6b4a], ['Blue', 0x1f4fa8], ['White', 0xe8e8f8]], tophat: [['White', 0xf4f0ff], ['Red', 0xa8233f], ['Purple', 0x5a3aa8], ['Gold', 0xffcf5a]], halo: [['Blue', 0x8ad8ff], ['Pink', 0xffa8d8], ['Green', 0xa8ffb8]], cat: [['Orange', 0xff8a3a], ['White', 0xf4f0ff], ['Black', 0x1d1a2e], ['Gray', 0x8a88a0]], bunny: [['Brown', 0x9a6a4a], ['Gray', 0x9a98b0], ['Pink', 0xffb8d8]], sprout: [['Autumn', 0xff8a3a], ['Blossom', 0xff9ad5]], crown: [['Silver', 0xd8dde8], ['Rose gold', 0xffb8a0]] };
+const HAT_NAMES = { party: 'party hat', wizard: 'wizard hat', tophat: 'top hat', halo: 'halo', cat: 'cat ears', bunny: 'bunny ears', sprout: 'sprout', crown: 'crown' };
+const HAT_PRICE = { party: 30, wizard: 50, tophat: 55, halo: 45, cat: 35, bunny: 35, sprout: 25, crown: 70 };
+for (const model in HAT_TINTS) for (const [n, c] of HAT_TINTS[model]) SHOP.push({ id: `hat:${model}-${n.toLowerCase().replace(/ /g, '')}`, tab: 'style', slot: 'hat', key: `${model}-${n.toLowerCase().replace(/ /g, '')}`, model, tint: c, name: `${n} ${HAT_NAMES[model]}`, base: HAT_PRICE[model], color: c });
+const MORE_TRAILS = [['Fireflies', 0xd8ff5a], ['Ocean spray', 0x5ad8ff], ['Cherry blossom', 0xffb8d8], ['Lava', 0xff4a1f], ['Gold dust', 0xffd36b], ['Mint', 0x6ef0c2], ['Violet', 0x9a7bff], ['Ghost', 0xe8e8ff], ['Toxic', 0x7aff3a], ['Sky', 0x8ac8ff], ['Ruby', 0xff3a6a], ['Sunset', 0xff8a4a]];
+for (const [n, c] of MORE_TRAILS) SHOP.push({ id: 'trail:' + n.toLowerCase().replace(/ /g, ''), tab: 'style', slot: 'trail', key: 'tint-' + n.toLowerCase().replace(/ /g, ''), tint: c, name: n, base: 40, color: c });
+const MORE_WORLDS = [
+  ['jungle', 'Jungle', 0x1f6b3a, [0x1f5a3a, 0x2e8f4a, 0x6ad86a, 0xc9b87a, 0xff5a6e]],
+  ['mars', 'Red Planet', 0xc24a2e, [0x7a2a1f, 0xc24a2e, 0xe88a5a, 0xf2c9a0, 0xffcf5a]],
+  ['ice', 'Glacier', 0x8ad8ff, [0x3a7ab8, 0x8ad8ff, 0xe8f8ff, 0xffffff, 0x5affd8]],
+  ['mint', 'Mint Chip', 0x8af0c8, [0x3a2a2a, 0x8af0c8, 0xc8ffe8, 0x5a3a2a, 0xff9ad5]],
+  ['neon', 'Neon City', 0xff3aa8, [0x1d1a2e, 0x3a2a6a, 0xff3aa8, 0x2a2048, 0x3affd8]],
+  ['sunny', 'Sunny Isle', 0xffd83a, [0x2fb8c9, 0x8ad86a, 0xffe88a, 0xfff4c8, 0xff7ab8]],
+  ['moon', 'Moon Dust', 0xc9c5d8, [0x6a6880, 0xa8a5b8, 0xd8d5e8, 0x4a4860, 0xffe08a]],
+  ['grape', 'Grape Soda', 0x7a3ad8, [0x3a1a6a, 0x7a3ad8, 0xc89aff, 0xffd8f0, 0x9be05a]],
+  ['rust', 'Rust Bucket', 0xb86a3a, [0x5a3a2a, 0xb86a3a, 0xd89a5a, 0x7a7a88, 0x5ab8ff]],
+  ['cherry', 'Cherry Grove', 0xff8ab8, [0x4a8a5a, 0x7ac87a, 0xffb8d8, 0xf8e8d8, 0xff4a7a]],
+];
+for (const [k, n, c, pal] of MORE_WORLDS) { WORLDS[k] = pal; SHOP.push({ id: 'world:' + k, tab: 'style', slot: 'world', key: k, name: n, base: 70, color: c }); }
+// keep the style tab grouped by slot
+{
+  const order = ['scarf', 'body', 'hat', 'trail', 'world'];
+  const rest = SHOP.filter((i) => !i.slot), styled = SHOP.filter((i) => i.slot);
+  styled.sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot) || (a.base - b.base));
+  SHOP.length = 0; SHOP.push(...rest, ...styled);
+}
 for (const it of SHOP) if (it.max == null) it.max = 1;
 const SLOT_NAMES = { scarf: 'Scarf', body: 'Body color', hat: 'Hat', trail: 'Trail', world: 'Planet' };
 const DEFAULT_EQUIP = { scarf: 'coral', body: 'classic', hat: 'none', trail: 'none', world: 'meadow' };
@@ -1259,7 +1381,7 @@ try {
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} }
 function lv(id) { return save.levels[id] || 0; }
 const owns = (it) => it.base === 0 || lv(it.id) >= 1;
-const price = (it) => Math.round(it.base * Math.pow(1.7, lv(it.id)));
+const price = (it) => Math.round(it.base * Math.pow(it.g || 1.7, lv(it.id)));
 
 function stats() {
   return {
@@ -1285,7 +1407,7 @@ function stats() {
   };
 }
 let S = stats();
-let trailKind = 'none', rainbowScarf = false;
+let trailKind = 'none', rainbowScarf = false, trailTint = null;
 
 function styleItem(slot) {
   return SHOP.find((i) => i.slot === slot && i.key === save.equip[slot] && owns(i)) || SHOP.find((i) => i.slot === slot && i.base === 0);
@@ -1298,10 +1420,14 @@ function applyStyle() {
   shellMat.roughness = b.key === 'golden' ? 0.25 : b.key === 'chrome' ? 0.15 : 0.5;
   eyeM.color.setHex(b.key === 'midnight' || b.key === 'shadow' ? 0xf4f0ff : 0x1a1430);
   rainbowScarf = styleItem('scarf').key === 'rainbow';
-  const hat = styleItem('hat').key;
+  const hi = styleItem('hat'), hat = hi.model || hi.key;
   for (const k in hats) hats[k].visible = k === hat;
+  const tm = hats[hat]?.userData.tint;
+  if (tm) tm.color.setHex(hi.tint ?? hats[hat].userData.baseColor);
   stalk.visible = bulb.visible = hat === 'none' || hat === 'halo';
-  trailKind = styleItem('trail').key;
+  const ti = styleItem('trail');
+  trailKind = ti.key; trailTint = ti.tint != null ? new THREE.Color(ti.tint) : null;
+  for (const m of LANDMARKS) landmarkObjs[m.key].visible = lv('home:' + m.key) > 0;
   board.visible = lv('skate') > 0;
   paintPlanet(styleItem('world').key);
 }
@@ -1309,6 +1435,8 @@ function applyStyle() {
 let shopTab = 'up';
 function renderShop() {
   $('wallet').textContent = save.dust;
+  { let have = 0, all = 0; for (const it of SHOP) { if (!it.base) continue; all += it.max; have += Math.min(it.max, lv(it.id)); }
+    $('collectlabel').textContent = `Collection ${have} / ${all}`; $('collectbar').style.width = (100 * have / all) + '%'; }
   document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === shopTab)));
   const box = $('items');
   box.innerHTML = '';
@@ -1332,7 +1460,7 @@ function renderShop() {
     const el = document.createElement('div');
     el.className = 'item' + (own && (it.slot || l > 0) ? ' owned' : '');
     const swatch = it.color != null ? `<span class="swatch" style="background:#${it.color.toString(16).padStart(6, '0')}"></span>` : '';
-    const pips = it.max > 1 ? Array.from({ length: it.max }, (_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('') : '';
+    const pips = it.max > 10 ? `<span class="label">Lv ${l} / ${it.max}</span>` : it.max > 1 ? Array.from({ length: it.max }, (_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('') : '';
     el.innerHTML = `<h3>${swatch}${it.name}</h3><p>${detail || (it.slot ? (it.base ? 'Cosmetic.' : 'Free.') : '')}</p><div class="foot"><span class="pips">${pips}</span><button class="${cls}" type="button" ${disabled ? 'disabled' : ''}>${label}</button></div>`;
     el.querySelector('button').addEventListener('click', () => shopAction(it));
     box.appendChild(el);
@@ -1442,7 +1570,8 @@ function hurt() {
     popup('shield popped', player.position.clone().addScaledVector(P.p, 1), 'mint');
     return;
   }
-  P.lives--; P.inv = S.invTime; G.combo = 1; G.comboT = 0;
+  P.lives--; P.inv = S.invTime;
+  G.combo = Math.max(1, Math.floor(G.combo * 0.25 * lv('steady'))); G.comboT = G.combo > 1 ? S.comboWin : 0;
   shake = Math.max(shake, 0.9);
   sfx.hurt();
   burst(player.position, 30, CORAL, 5, 0.8, 0.8, P.p, 0.8);
@@ -1467,7 +1596,7 @@ function gameOver() {
   $('dashbtn').hidden = $('driftbtn').hidden = $('burstbtn').hidden = $('giantbtn').hidden = true; G.giantT = 0; for (const b of buddies) b.g.visible = false; joy.active = false; $('joy').hidden = true;
   const isBest = G.score > best;
   if (isBest) { best = G.score; try { localStorage.setItem('starfall-keeper-best', String(best)); } catch {} }
-  const earned = Math.floor(G.dust) + Math.floor(G.time / 10) + 4 * lv('piggy');
+  const earned = Math.floor(G.dust) + Math.floor(G.time / 10) * (1 + lv('survivor')) + 4 * lv('piggy') + 2 * LANDMARKS.filter((m) => lv('home:' + m.key)).length;
   save.dust += earned; persist();
   setTimeout(() => {
     $('eyebrow').textContent = isBest ? 'New best score' : 'Pip has been flattened';
@@ -1545,7 +1674,8 @@ function updatePlay(dt) {
     }
   }
   if (trailKind !== 'none' && P.moving > 0.2 && Math.random() < 0.75) {
-    const c = trailKind === 'rainbow' ? _c.setHSL((T * 0.6) % 1, 0.9, 0.62)
+    const c = trailTint ? _c.copy(trailTint).offsetHSL(rand(-0.03, 0.03), 0, rand(-0.12, 0.12))
+      : trailKind === 'rainbow' ? _c.setHSL((T * 0.6) % 1, 0.9, 0.62)
       : trailKind === 'embers' ? _c.copy(EMBER).offsetHSL(rand(-0.03, 0.05), 0, 0)
       : trailKind === 'frost' ? _c.setHSL(0.56, 0.6, rand(0.75, 0.95))
       : trailKind === 'bubbles' ? _c.setHSL(0.53, 0.8, rand(0.7, 0.9))
@@ -1627,9 +1757,10 @@ function updateBuddy(dt) {
     b.rest -= dt;
     if (b.target && !pickups.includes(b.target)) b.target = null;
     if (!b.target && b.rest <= 0) {
-      let bestD = 7;
+      let bestD = 7 + 1.5 * lv('radar');
+      const medic = lv('hearthelp') && P.lives < S.maxLives;
       for (const pk of pickups) {
-        if (pk.kind === 'heart' || pk.age < 0.4 || buddies.some((o) => o.target === pk)) continue;
+        if ((pk.kind === 'heart' && !medic) || pk.age < 0.4 || buddies.some((o) => o.target === pk)) continue;
         const d = chord(P.p, pk.n); if (d < bestD) { bestD = d; b.target = pk; }
       }
     }
@@ -1637,13 +1768,13 @@ function updateBuddy(dt) {
       _b.copy(b.target.g.position).addScaledVector(b.target.n, 0.4);
       _v.subVectors(_b, bg.position);
       const d = _v.length();
-      if (d < 0.45) { collectPickup(pickups.indexOf(b.target)); b.target = null; b.rest = 1.4; tone(1600 + k * 200, 0.12, 'sine', 0.06, 2200); continue; }
-      bg.position.addScaledVector(_v, Math.min(1, 10 * dt / d));
+      if (d < 0.45) { collectPickup(pickups.indexOf(b.target)); b.target = null; b.rest = 1.4 * (1 - 0.15 * lv('wings')); tone(1600 + k * 200, 0.12, 'sine', 0.06, 2200); continue; }
+      bg.position.addScaledVector(_v, Math.min(1, 10 * (1 + 0.25 * lv('wings')) * dt / d));
       if (Math.random() < 0.6) emit(bg.position, randomUnit(_v).multiplyScalar(0.3), b.color, rand(0.3, 0.5), 0);
     } else {
       // circle around Pip's head
       const a = T * 2 + b.phase;
-      _b.copy(player.position).addScaledVector(P.p, 1.1 * giantS).addScaledVector(_r, Math.cos(a) * 0.9 * giantS).addScaledVector(P.f, Math.sin(a) * 0.9 * giantS);
+      _b.copy(player.position).addScaledVector(P.p, 1.1 * giantS).addScaledVector(_r, Math.cos(a) * b.ring * giantS).addScaledVector(P.f, Math.sin(a) * b.ring * giantS);
       bg.position.lerp(_b, 1 - Math.exp(-6 * dt));
     }
   }
@@ -1789,6 +1920,7 @@ renderer.setAnimationLoop((now) => {
     P.moving = 0; P.turn = 0;
   }
   updateWorld(dt);
+  updateLandmarks(dt);
   poseplayer(dt);
   updateParticles(dt);
   updateCamera(dt);
