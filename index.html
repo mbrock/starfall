@@ -228,6 +228,7 @@
       <li><kbd>P</kbd> <span>pause</span> &nbsp; <kbd>M</kbd> <span>sound on/off</span></li>
       <li><span>Grab shards within 3 s of each other to raise the multiplier, up to ×8.</span></li>
     </ul>
+    <p class="lede" id="controller-hint" hidden>Xbox: left stick moves and turns, right stick looks. A dashes, B blinks, X bursts, Y grows, LB drifts. Menu pauses. Use the D-pad and A in menus.</p>
     <div class="row">
       <div class="actions">
         <button class="btn" id="start" type="button">Start</button>
@@ -1019,6 +1020,68 @@ function setMuted(m) {
 // ---------- input ----------
 const keys = new Set();
 const joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 };
+const pad = { connected: false, buttons: [], axes: [0, 0, 0, 0], menuDir: 0, menuAt: 0 };
+const padAxis = (value = 0) => Math.abs(value) < 0.18 ? 0 : Math.sign(value) * (Math.abs(value) - 0.18) / 0.82;
+
+function pollGamepad(dt) {
+  const gamepad = Array.from(navigator.getGamepads?.() || []).find(p => p?.connected && p.mapping === 'standard');
+  const wasConnected = pad.connected;
+  pad.connected = !!gamepad;
+  $('controller-hint').hidden = !pad.connected;
+  if (state === 'title') $('keys').hidden = pad.connected;
+  if (wasConnected !== pad.connected) {
+    for (const [selector, controller, keyboard] of [
+      ['.dash kbd', 'A', 'Space'], ['#ab-drift kbd', 'LB', 'Q'],
+      ['#ab-burst kbd', 'X', 'E'], ['#ab-giant kbd', 'Y', 'G'],
+    ]) document.querySelector(selector).textContent = pad.connected ? controller : keyboard;
+  }
+  if (!gamepad) {
+    pad.buttons = []; pad.axes.fill(0); pad.menuDir = 0;
+    if (wasConnected && state === 'play' && !paused) setPaused(true);
+    return;
+  }
+  const buttons = gamepad.buttons.map(b => b.pressed);
+  const pressed = i => buttons[i] && !pad.buttons[i];
+  pad.axes = gamepad.axes.slice(0, 4).map(padAxis);
+  if (!document.hasFocus()) { pad.axes.fill(0); pad.buttons = buttons; return; }
+  if (buttons.some((down, i) => down && !pad.buttons[i])) { initAudio(); updateMusic(); }
+
+  if (!$('shop').hidden || !$('overlay').hidden || paused) {
+    const scope = !$('shop').hidden ? $('shop') : paused ? $('pause') : $('overlay');
+    const choices = Array.from(scope.querySelectorAll('button:not(:disabled)')).filter(b => b.getClientRects().length);
+    const direction = buttons[12] || buttons[14] || pad.axes[1] < -0.6 || pad.axes[0] < -0.6 ? -1
+      : buttons[13] || buttons[15] || pad.axes[1] > 0.6 || pad.axes[0] > 0.6 ? 1 : 0;
+    const now = performance.now();
+    if (direction && (direction !== pad.menuDir || now >= pad.menuAt)) {
+      const index = choices.indexOf(document.activeElement);
+      const next = index < 0 ? (direction > 0 ? 0 : choices.length - 1)
+        : (index + direction + choices.length) % choices.length;
+      choices[next]?.focus();
+      pad.menuAt = now + (direction === pad.menuDir ? 160 : 400);
+    }
+    pad.menuDir = direction;
+    if (pressed(1) && !$('shop').hidden) closeShop();
+    else if ((pressed(1) || pressed(9)) && paused) setPaused(false);
+    else if (pressed(0)) {
+      const selected = choices.includes(document.activeElement) ? document.activeElement
+        : paused ? $('resume') : !$('shop').hidden ? $('closeshop') : $('start');
+      if (state !== 'over' || G.overReady) selected.click();
+    }
+  } else {
+    pad.menuDir = 0;
+    if (pressed(9)) setPaused(true);
+    else {
+      if (pressed(0)) tryDash();
+      if (pressed(1)) blink();
+      if (pressed(2)) useBurst();
+      if (pressed(3)) useGiant();
+      if (pressed(4)) useDrift();
+      mouse.dx += (pad.axes[2] || 0) * dt * 600;
+      mouse.pitch = THREE.MathUtils.clamp(mouse.pitch - (pad.axes[3] || 0) * dt * 1.5, -0.4, 0.6);
+    }
+  }
+  pad.buttons = buttons;
+}
 addEventListener('keydown', (e) => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   keys.add(e.code);
@@ -1046,7 +1109,7 @@ cv.addEventListener('contextmenu', (e) => e.preventDefault());
 // Clicking the planet locks the cursor so you can keep turning; Esc frees it (and pauses).
 const mouse = { dx: 0, pitch: 0 };
 function lockMouse() {
-  if (coarse || document.pointerLockElement === cv || !cv.requestPointerLock) return;
+  if (coarse || pad.connected || document.pointerLockElement === cv || !cv.requestPointerLock) return;
   try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch {}
 }
 function unlockMouse() { if (document.pointerLockElement) document.exitPointerLock?.(); }
@@ -1087,6 +1150,8 @@ $('giantbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); if (!
 function readInput() {
   let fwd = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   let turn = (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0);
+  fwd = THREE.MathUtils.clamp(fwd - (pad.axes[1] || 0), -1, 1);
+  turn = THREE.MathUtils.clamp(turn - (pad.axes[0] || 0), -1, 1);
   if (joy.active) {
     const mag = Math.min(1, Math.hypot(joy.x, joy.y));
     if (mag > 0.18) {
@@ -1760,6 +1825,7 @@ function updateHud() {
 let last = performance.now();
 renderer.setAnimationLoop((now) => {
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  pollGamepad(dt);
   if (paused) dt = 0;
   T += dt;
   if (state === 'play') updatePlay(dt);

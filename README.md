@@ -14,6 +14,13 @@ Play it: https://mbrock.github.io/starfall/
 - **P**: pause
 - **M**: sound on or off
 
+Xbox and other standard gamepads also work: left stick moves and turns,
+right stick looks, **A** dashes, **B** blinks, **X** uses Star Burst,
+**Y** uses Giant Pip, and **LB** uses Time Drift. **Menu/Start** pauses
+or resumes. Use the D-pad or left stick to choose menu buttons and **A**
+to select; **B** closes the shop or resumes. Press a controller button
+once if the browser has not detected it yet. Disconnecting it pauses play.
+
 The whole game is one file, `index.html`. To run it locally:
 
 ```
