@@ -4,7 +4,7 @@
     {
       "name": "game",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765"],
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "/Users/mbrock/starfall"],
       "port": 8765
     }
   ]

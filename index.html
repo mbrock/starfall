@@ -368,6 +368,9 @@ const WORLDS = {
   frost: [0x6f9fd6, 0xbfe0f5, 0xffffff, 0x9fb4d9, 0x7ee0ff],
   dusk: [0x2a2160, 0x4b3a9a, 0x7d63d8, 0x1c1640, 0x3ff0d0],
   lava: [0x2a1a1f, 0x4a2a2a, 0x6e3b30, 0xff7a2a, 0xffcf5a],
+  candy: [0xd96aa8, 0xff9ad5, 0xffd1ec, 0xfff1a8, 0x7ee0ff],
+  ocean: [0x1b4f8a, 0x2f86c9, 0x6ec8f0, 0xf3e3b0, 0xff8a6e],
+  desert: [0xb8743a, 0xd9a35a, 0xf0cf8a, 0xf7e6c0, 0x46b88f],
 };
 const planetGeo = new THREE.IcosahedronGeometry(R, 8);
 {
@@ -640,11 +643,46 @@ const hats = {};
     const cone = mk(new THREE.ConeGeometry(0.2, 0.55, 16), wm, 0, 0.64, 0); cone.rotation.z = 0.25;
     hats.wizard.add(brim, cone, mk(new THREE.OctahedronGeometry(0.05, 0), new THREE.MeshBasicMaterial({ color: 0xffcf5a }), 0.13, 0.62, 0.15));
   }
+  hats.tophat = new THREE.Group();
+  {
+    const tm = mat(0x1d1a2e, { flatShading: false, roughness: 0.5 });
+    hats.tophat.add(mk(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 20), tm, 0, 0.37, 0));
+    hats.tophat.add(mk(new THREE.CylinderGeometry(0.19, 0.19, 0.34, 20), tm, 0, 0.55, 0));
+    hats.tophat.add(mk(new THREE.CylinderGeometry(0.195, 0.195, 0.06, 20), mat(0xff5a6e, { flatShading: false }), 0, 0.42, 0));
+  }
+  hats.cat = new THREE.Group();
+  {
+    const em = mat(0x3a3570, { flatShading: false }), pm = mat(0xff9ad5, { flatShading: false });
+    for (const sd of [-1, 1]) {
+      const e = mk(new THREE.ConeGeometry(0.11, 0.22, 4), em, 0.2 * sd, 0.42, 0); e.rotation.z = -0.45 * sd; e.rotation.y = Math.PI / 4;
+      const i = mk(new THREE.ConeGeometry(0.06, 0.13, 4), pm, 0.2 * sd, 0.41, 0.03); i.rotation.z = -0.45 * sd; i.rotation.y = Math.PI / 4;
+      hats.cat.add(e, i);
+    }
+  }
+  hats.bunny = new THREE.Group();
+  {
+    const bm = mat(0xf4f0ff, { flatShading: false }), pm = mat(0xffb3d1, { flatShading: false });
+    for (const sd of [-1, 1]) {
+      const e = mk(new THREE.SphereGeometry(0.08, 10, 8), bm, 0.12 * sd, 0.62, 0); e.scale.set(0.8, 3, 0.5); e.rotation.z = -0.2 * sd;
+      const i = mk(new THREE.SphereGeometry(0.045, 8, 6), pm, 0.12 * sd, 0.62, 0.03); i.scale.set(0.8, 3.4, 0.4); i.rotation.z = -0.2 * sd;
+      hats.bunny.add(e, i);
+    }
+  }
   for (const k in hats) { hats[k].visible = false; pipBody.add(hats[k]); }
 }
 const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.8, 24, 16), new THREE.MeshBasicMaterial({ color: 0x6ef0c2, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }));
 bubble.position.y = 0.05;
 player.add(bubble);
+
+// Star Buddy (shop ability): a little star that flies off to grab shards
+const BUDDY_COLORS = [[0xbffff0, 0x6ef0c2], [0xfff1b8, 0xffc24a], [0xf0d8ff, 0xb08aff]];
+const buddies = BUDDY_COLORS.map(([c, g], k) => {
+  const grp = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: c }));
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: g, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  glow.scale.setScalar(1.1); grp.add(core, glow); grp.visible = false; scene.add(grp);
+  return { g: grp, core, color: new THREE.Color(g), target: null, rest: 0, phase: k * Math.PI * 2 / 3 };
+});
 
 // skateboard (shop item)
 const board = new THREE.Group();
@@ -699,12 +737,14 @@ function poseplayer(dt) {
   bubble.visible = P.shield;
   bubble.scale.setScalar(1 + Math.sin(T * 4) * 0.04);
   hats.halo.rotation.y += dt * 1.5;
+  if (rainbowScarf) scarfMat.color.setHSL((T * 0.3) % 1, 0.85, 0.6);
 }
 
 // ---------- pickups (star shards, hearts) ----------
 const shardGeo = new THREE.OctahedronGeometry(0.3, 0);
 const heartGeo = new THREE.IcosahedronGeometry(0.27, 0);
 const shardMat = mat(0xffd36b, { emissive: 0xffa21f, emissiveIntensity: 1.6, roughness: 0.3 });
+const goldMat = mat(0xfff1a8, { emissive: 0xffd36b, emissiveIntensity: 2.2, roughness: 0.15, metalness: 0.4 });
 const heartMat = mat(0x6ef0c2, { emissive: 0x1fbf8a, emissiveIntensity: 1.4, roughness: 0.3 });
 const GOLD = new THREE.Color(0xffc24a), MINT = new THREE.Color(0x6ef0c2), EMBER = new THREE.Color(0xff7a2a), CORAL = new THREE.Color(0xff5a6e), WHITE = new THREE.Color(0xf4f0ff);
 const pickups = [];
@@ -713,10 +753,11 @@ const beamMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true
 const beamMatGold = beamMat(0xffb43a), beamMatMint = beamMat(0x6ef0c2);
 function spawnPickup(n, kind, life) {
   const g = new THREE.Group();
-  const mesh = new THREE.Mesh(kind === 'heart' ? heartGeo : shardGeo, kind === 'heart' ? heartMat : shardMat);
+  const mesh = new THREE.Mesh(kind === 'heart' ? heartGeo : shardGeo, kind === 'heart' ? heartMat : kind === 'gold' ? goldMat : shardMat);
   mesh.castShadow = true; g.add(mesh);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: kind === 'heart' ? 0x6ef0c2 : 0xffb43a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 }));
-  glow.scale.setScalar(1.7); g.add(glow);
+  if (kind === 'gold') mesh.scale.setScalar(1.7);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: kind === 'heart' ? 0x6ef0c2 : kind === 'gold' ? 0xfff0a0 : 0xffb43a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.85 }));
+  glow.scale.setScalar(kind === 'gold' ? 3 : 1.7); g.add(glow);
   if (lv('beacon')) g.add(new THREE.Mesh(beamGeo, kind === 'heart' ? beamMatMint : beamMatGold));
   scene.add(g);
   pickups.push({ g, mesh, n: n.clone(), kind, life, age: 0, phase: Math.random() * 6 });
@@ -772,8 +813,9 @@ function impact(m) {
       G.score += bonus;
       popup('close call +' + bonus, player.position.clone().addScaledVector(P.p, 0.9), 'ink');
     }
-    if (Math.random() < 0.8) {
-      spawnPickup(pointNear(n, 0, 0.05), 'shard', S.shardLife);
+    if (lv('clover') && P.lives < S.maxLives && Math.random() < 0.1) spawnPickup(pointNear(n, 0, 0.05), 'heart', 9);
+    else if (Math.random() < 0.8) {
+      spawnPickup(pointNear(n, 0, 0.05), lv('goldrush') && Math.random() < 0.125 ? 'gold' : 'shard', S.shardLife);
       if (Math.random() < S.doubleShard) spawnPickup(pointNear(n, 0.07, 0.12), 'shard', S.shardLife);
     }
   }
@@ -1066,7 +1108,7 @@ function blink() {
   const from = player.position.clone();
   burst(from, 24, WHITE, 3, 0.5, 0.2);
   _a.crossVectors(P.p, P.f).normalize();
-  const ang = 3 / R;
+  const ang = S.blinkDist / R;
   P.p.applyAxisAngle(_a, ang); P.f.applyAxisAngle(_a, ang);
   P.p.normalize(); P.f.addScaledVector(P.p, -P.f.dot(P.p)).normalize();
   P.dashCD = S.dashCD;
@@ -1079,21 +1121,21 @@ function blink() {
 }
 function useDrift() {
   if (state !== 'play' || !lv('drift') || G.driftCD > 0 || !P.alive) return;
-  G.driftT = 4; G.driftCD = 25; sfx.drift();
+  G.driftT = 4; G.driftCD = 25 * S.abCD; sfx.drift();
   popup('time drift', player.position.clone().addScaledVector(P.p, 1), 'mint');
 }
 const GIANT_SCALE = 2.6, GIANT_TIME = 6, GIANT_CD = 30;
 let giantS = 1;
 function useGiant() {
   if (state !== 'play' || !lv('giant') || G.giantCD > 0 || !P.alive) return;
-  G.giantT = GIANT_TIME; G.giantCD = GIANT_CD; G.stompT = 0; sfx.giant(); shake = Math.max(shake, 0.4);
+  G.giantT = S.giantTime; G.giantCD = GIANT_CD * S.abCD; G.stompT = 0; sfx.giant(); shake = Math.max(shake, 0.4);
   burst(player.position, 50, GOLD, 6, 0.9, 0.3, P.p, 1);
   burst(player.position, 30, WHITE, 4, 0.7, 0.3, P.p, 1);
   popup('GIANT PIP!', player.position.clone().addScaledVector(P.p, 2), 'gold');
 }
 function useBurst() {
   if (state !== 'play' || !lv('burst') || G.burstCD > 0 || !P.alive) return;
-  G.burstCD = 35; sfx.burst(); shake = Math.max(shake, 0.35);
+  G.burstCD = 35 * S.abCD; sfx.burst(); shake = Math.max(shake, 0.35);
   for (const m of meteors) {
     burst(m.mesh.position, 26, GOLD, 6, 0.9, 0.2);
     burst(m.mesh.position, 16, EMBER, 4, 0.8, 0.2);
@@ -1120,6 +1162,11 @@ const SHOP = [
   { id: 'shell', tab: 'up', name: 'Thick Shell', max: 3, base: 14, info: 'Stay untouchable longer after a hit.', fx: (l) => `${(1.6 + 0.5 * l).toFixed(1)} s safe` },
   { id: 'hearts', tab: 'up', name: 'Heart Finder', max: 3, base: 20, info: 'Hull repairs show up more often.', fx: (l) => `one every ${Math.round(24 * (1 - 0.2 * l))} s` },
   { id: 'close', tab: 'up', name: 'Daredevil', max: 3, base: 12, info: 'Bigger bonus for close calls.', fx: (l) => `${1 + l}× close-call points` },
+  { id: 'shine', tab: 'up', name: 'Shiny Shards', max: 4, base: 22, info: 'Every shard is worth more points.', fx: (l) => `+${l * 20}% shard points` },
+  { id: 'farblink', tab: 'up', name: 'Far Blink', max: 3, base: 18, info: 'Right-click blink jumps further.', fx: (l) => `${3 + l} m blink` },
+  { id: 'powercd', tab: 'up', name: 'Quick Powers', max: 3, base: 40, info: 'Drift, Burst and Giant recharge faster.', fx: (l) => `-${l * 12}% recharge` },
+  { id: 'giantlen', tab: 'up', name: 'Bigger Giant', max: 3, base: 25, info: 'Giant Pip lasts longer (needs Giant Pip).', fx: (l) => `${6 + 2 * l} s giant` },
+  { id: 'piggy', tab: 'up', name: 'Piggy Bank', max: 4, base: 30, info: 'Bonus stardust at the end of every run.', fx: (l) => `+${l * 4} stardust per run` },
   { id: 'dust', tab: 'up', name: 'Stardust Sieve', max: 4, base: 35, info: 'Earn more stardust from every shard.', fx: (l) => `+${l * 25}% stardust` },
   // abilities (one-time)
   { id: 'shield', tab: 'ab', name: 'Bubble Shield', max: 1, base: 60, info: 'Start each run inside a bubble that blocks one hit.' },
@@ -1129,6 +1176,9 @@ const SHOP = [
   { id: 'beacon', tab: 'ab', name: 'Shard Beacons', max: 1, base: 35, info: 'Beams of light mark every shard, even past the horizon.' },
   { id: 'giant', tab: 'ab', name: 'Giant Pip', max: 1, base: 130, info: 'Press <b>G</b> to grow huge for 6 s. Meteors bounce off you, you stomp trees flat, and you grab shards from much further away. While giant, shards show up <b>50% faster</b>. Recharges in 30 s.' },
   { id: 'skate', tab: 'ab', name: 'Skateboard', max: 1, base: 80, info: 'Pip rides a skateboard. Dashes go <b>60% faster</b> and throw sparks off the wheels.' },
+  { id: 'buddy', tab: 'ab', name: 'Star Buddies', max: 3, base: 90, info: 'Little star helpers circle Pip and fly off to grab nearby shards for you. Each level adds another helper.', fx: (l) => `${l} helper${l === 1 ? '' : 's'}` },
+  { id: 'goldrush', tab: 'ab', name: 'Gold Rush', max: 1, base: 75, info: 'About 1 in 8 crater shards is a big <b>golden shard</b> worth 5× points and stardust.' },
+  { id: 'clover', tab: 'ab', name: 'Lucky Clover', max: 1, base: 55, info: 'When your hull is damaged, craters sometimes leave a heart instead of a shard.' },
   { id: 'headstart', tab: 'ab', name: 'Head Start', max: 1, base: 45, info: 'Begin each run already at ×3, with 8 s to grab your first shard.' },
   // style (slot items)
   { id: 'scarf:coral', tab: 'style', slot: 'scarf', key: 'coral', name: 'Coral scarf', base: 0, color: 0xff5a6e },
@@ -1137,27 +1187,44 @@ const SHOP = [
   { id: 'scarf:violet', tab: 'style', slot: 'scarf', key: 'violet', name: 'Violet scarf', base: 15, color: 0x9a7bff },
   { id: 'scarf:sky', tab: 'style', slot: 'scarf', key: 'sky', name: 'Sky scarf', base: 15, color: 0x5ab8ff },
   { id: 'scarf:night', tab: 'style', slot: 'scarf', key: 'night', name: 'Night scarf', base: 20, color: 0x2a2160 },
+  { id: 'scarf:rose', tab: 'style', slot: 'scarf', key: 'rose', name: 'Rose scarf', base: 15, color: 0xff8ad8 },
+  { id: 'scarf:lime', tab: 'style', slot: 'scarf', key: 'lime', name: 'Lime scarf', base: 15, color: 0xb6f04a },
+  { id: 'scarf:snow', tab: 'style', slot: 'scarf', key: 'snow', name: 'Snow scarf', base: 15, color: 0xf8f8ff },
+  { id: 'scarf:rainbow', tab: 'style', slot: 'scarf', key: 'rainbow', name: 'Rainbow scarf', base: 60, color: 0xff5a6e },
   { id: 'body:classic', tab: 'style', slot: 'body', key: 'classic', name: 'Classic', base: 0, color: 0xf4f0ff },
   { id: 'body:peach', tab: 'style', slot: 'body', key: 'peach', name: 'Peach', base: 20, color: 0xffc9a8 },
   { id: 'body:lilac', tab: 'style', slot: 'body', key: 'lilac', name: 'Lilac', base: 20, color: 0xc9b8ff },
   { id: 'body:mint', tab: 'style', slot: 'body', key: 'mint', name: 'Seafoam', base: 20, color: 0xa8f0d6 },
   { id: 'body:midnight', tab: 'style', slot: 'body', key: 'midnight', name: 'Midnight', base: 30, color: 0x3a3570 },
+  { id: 'body:sky', tab: 'style', slot: 'body', key: 'sky', name: 'Sky', base: 20, color: 0xa8d8ff },
+  { id: 'body:bubblegum', tab: 'style', slot: 'body', key: 'bubblegum', name: 'Bubblegum', base: 25, color: 0xff9ad5 },
+  { id: 'body:shadow', tab: 'style', slot: 'body', key: 'shadow', name: 'Shadow', base: 35, color: 0x1d1a2e },
   { id: 'body:golden', tab: 'style', slot: 'body', key: 'golden', name: 'Solid Gold', base: 80, color: 0xffd36b },
+  { id: 'body:chrome', tab: 'style', slot: 'body', key: 'chrome', name: 'Chrome', base: 90, color: 0xd8dde8 },
   { id: 'hat:none', tab: 'style', slot: 'hat', key: 'none', name: 'No hat', base: 0 },
   { id: 'hat:sprout', tab: 'style', slot: 'hat', key: 'sprout', name: 'Sprout', base: 20 },
   { id: 'hat:party', tab: 'style', slot: 'hat', key: 'party', name: 'Party hat', base: 25 },
   { id: 'hat:halo', tab: 'style', slot: 'hat', key: 'halo', name: 'Halo', base: 40 },
   { id: 'hat:wizard', tab: 'style', slot: 'hat', key: 'wizard', name: 'Wizard hat', base: 45 },
+  { id: 'hat:cat', tab: 'style', slot: 'hat', key: 'cat', name: 'Cat ears', base: 30 },
+  { id: 'hat:bunny', tab: 'style', slot: 'hat', key: 'bunny', name: 'Bunny ears', base: 30 },
+  { id: 'hat:tophat', tab: 'style', slot: 'hat', key: 'tophat', name: 'Top hat', base: 50 },
   { id: 'hat:crown', tab: 'style', slot: 'hat', key: 'crown', name: 'Crown', base: 60 },
   { id: 'trail:none', tab: 'style', slot: 'trail', key: 'none', name: 'No trail', base: 0 },
   { id: 'trail:sparkle', tab: 'style', slot: 'trail', key: 'sparkle', name: 'Sparkles', base: 30, color: 0xffcf5a },
   { id: 'trail:embers', tab: 'style', slot: 'trail', key: 'embers', name: 'Embers', base: 40, color: 0xff7a2a },
   { id: 'trail:frost', tab: 'style', slot: 'trail', key: 'frost', name: 'Snowflakes', base: 40, color: 0xbfe0f5 },
+  { id: 'trail:bubbles', tab: 'style', slot: 'trail', key: 'bubbles', name: 'Bubbles', base: 35, color: 0x9fe8ff },
+  { id: 'trail:hearts', tab: 'style', slot: 'trail', key: 'hearts', name: 'Love', base: 45, color: 0xff7ab8 },
+  { id: 'trail:leaves', tab: 'style', slot: 'trail', key: 'leaves', name: 'Leaves', base: 40, color: 0x7ccf6a },
   { id: 'trail:rainbow', tab: 'style', slot: 'trail', key: 'rainbow', name: 'Rainbow', base: 70 },
   { id: 'world:meadow', tab: 'style', slot: 'world', key: 'meadow', name: 'Meadow', base: 0, color: 0x46b88f },
   { id: 'world:autumn', tab: 'style', slot: 'world', key: 'autumn', name: 'Autumn', base: 50, color: 0xd9773a },
   { id: 'world:frost', tab: 'style', slot: 'world', key: 'frost', name: 'Frost', base: 50, color: 0xbfe0f5 },
   { id: 'world:dusk', tab: 'style', slot: 'world', key: 'dusk', name: 'Dusk', base: 70, color: 0x4b3a9a },
+  { id: 'world:desert', tab: 'style', slot: 'world', key: 'desert', name: 'Desert', base: 50, color: 0xd9a35a },
+  { id: 'world:ocean', tab: 'style', slot: 'world', key: 'ocean', name: 'Ocean', base: 60, color: 0x2f86c9 },
+  { id: 'world:candy', tab: 'style', slot: 'world', key: 'candy', name: 'Candy', base: 80, color: 0xff9ad5 },
   { id: 'world:lava', tab: 'style', slot: 'world', key: 'lava', name: 'Ember Rock', base: 90, color: 0xff7a2a },
 ];
 for (const it of SHOP) if (it.max == null) it.max = 1;
@@ -1191,10 +1258,14 @@ function stats() {
     heartEvery: 24 * (1 - 0.2 * lv('hearts')),
     closeMul: 1 + lv('close'),
     dustMul: 1 + 0.25 * lv('dust'),
+    shardMul: 1 + 0.2 * lv('shine'),
+    blinkDist: 3 + lv('farblink'),
+    abCD: 1 - 0.12 * lv('powercd'),
+    giantTime: GIANT_TIME + 2 * lv('giantlen'),
   };
 }
 let S = stats();
-let trailKind = 'none';
+let trailKind = 'none', rainbowScarf = false;
 
 function styleItem(slot) {
   return SHOP.find((i) => i.slot === slot && i.key === save.equip[slot] && owns(i)) || SHOP.find((i) => i.slot === slot && i.base === 0);
@@ -1203,9 +1274,10 @@ function applyStyle() {
   scarfMat.color.setHex(styleItem('scarf').color);
   const b = styleItem('body');
   shellMat.color.setHex(b.color);
-  shellMat.metalness = b.key === 'golden' ? 0.7 : 0;
-  shellMat.roughness = b.key === 'golden' ? 0.25 : 0.5;
-  eyeM.color.setHex(b.key === 'midnight' ? 0xf4f0ff : 0x1a1430);
+  shellMat.metalness = b.key === 'golden' ? 0.7 : b.key === 'chrome' ? 0.9 : 0;
+  shellMat.roughness = b.key === 'golden' ? 0.25 : b.key === 'chrome' ? 0.15 : 0.5;
+  eyeM.color.setHex(b.key === 'midnight' || b.key === 'shadow' ? 0xf4f0ff : 0x1a1430);
+  rainbowScarf = styleItem('scarf').key === 'rainbow';
   const hat = styleItem('hat').key;
   for (const k in hats) hats[k].visible = k === hat;
   stalk.visible = bulb.visible = hat === 'none' || hat === 'halo';
@@ -1306,7 +1378,7 @@ function start() {
   S = stats();
   const head = lv('headstart') > 0;
   Object.assign(G, { score: 0, time: 0, combo: head ? 3 : 1, comboT: head ? 8 : 0, bestChain: head ? 3 : 1, spawnT: 1.6, ambientT: 0.3, heartT: S.heartEvery, overT: 0, overReady: false, dust: 0, driftT: 0, driftCD: 0, burstCD: 0, giantT: 0, giantCD: 0, stompT: 0 });
-  giantS = 1;
+  giantS = 1; for (const b of buddies) { b.target = null; b.rest = 0; b.g.position.copy(P.p).multiplyScalar(R + 2); }
   Object.assign(P, { lives: S.maxLives, inv: 1.2, dashT: 0, dashCD: 0, alive: true, shield: lv('shield') > 0, revived: false });
   state = 'play';
   $('overlay').hidden = true;
@@ -1372,10 +1444,10 @@ function gameOver() {
   burst(player.position, 70, WHITE, 6, 1.2, 0.6, P.p, 1);
   burst(player.position, 40, CORAL, 4, 1.0, 0.8, P.p, 1);
   sfx.over();
-  $('dashbtn').hidden = $('driftbtn').hidden = $('burstbtn').hidden = $('giantbtn').hidden = true; G.giantT = 0; joy.active = false; $('joy').hidden = true;
+  $('dashbtn').hidden = $('driftbtn').hidden = $('burstbtn').hidden = $('giantbtn').hidden = true; G.giantT = 0; for (const b of buddies) b.g.visible = false; joy.active = false; $('joy').hidden = true;
   const isBest = G.score > best;
   if (isBest) { best = G.score; try { localStorage.setItem('starfall-keeper-best', String(best)); } catch {} }
-  const earned = Math.floor(G.dust) + Math.floor(G.time / 10);
+  const earned = Math.floor(G.dust) + Math.floor(G.time / 10) + 4 * lv('piggy');
   save.dust += earned; persist();
   setTimeout(() => {
     $('eyebrow').textContent = isBest ? 'New best score' : 'Pip has been flattened';
@@ -1456,10 +1528,13 @@ function updatePlay(dt) {
     const c = trailKind === 'rainbow' ? _c.setHSL((T * 0.6) % 1, 0.9, 0.62)
       : trailKind === 'embers' ? _c.copy(EMBER).offsetHSL(rand(-0.03, 0.05), 0, 0)
       : trailKind === 'frost' ? _c.setHSL(0.56, 0.6, rand(0.75, 0.95))
+      : trailKind === 'bubbles' ? _c.setHSL(0.53, 0.8, rand(0.7, 0.9))
+      : trailKind === 'hearts' ? _c.setHSL(rand(0.9, 0.97), 0.9, rand(0.65, 0.8))
+      : trailKind === 'leaves' ? _c.setHSL(rand(0.22, 0.33), 0.6, rand(0.45, 0.6))
       : _c.setHSL(0.12, 1, rand(0.6, 0.85));
     _v.copy(P.p).multiplyScalar(rand(0.2, 0.8)).addScaledVector(P.f, -1.2).add(randomUnit(_a).multiplyScalar(0.3));
     _b.copy(player.position).addScaledVector(P.p, -0.2).add(randomUnit(_a).multiplyScalar(0.15));
-    emit(_b, _v, c, rand(0.5, 0.9), trailKind === 'embers' ? -0.15 : trailKind === 'frost' ? 0.25 : 0.05);
+    emit(_b, _v, c, rand(0.5, 0.9), trailKind === 'embers' ? -0.15 : trailKind === 'bubbles' ? -0.35 : trailKind === 'leaves' ? 0.4 : trailKind === 'frost' ? 0.25 : 0.05);
   }
 
   // meteor spawner, ramps with time
@@ -1499,20 +1574,58 @@ function updatePlay(dt) {
     const reach = S.reach * (G.giantT > 0 ? 2.4 : 1);
     if (pull && d < reach * 2.6 && pk.age > 0.3) pk.n.lerp(P.p, Math.min(1, dt * 1.2 * pull)).normalize();
     if (pk.age < 0.15 || d > reach) continue;
-    if (pk.kind === 'heart') {
-      P.lives = Math.min(S.maxLives, P.lives + 1); renderLives(); sfx.heart();
-      popup('+1 hull', pk.g.position, 'mint');
-      burst(pk.g.position, 26, MINT, 3.5, 0.8, 0.3);
-    } else {
-      const gain = 10 * G.combo;
-      G.score += gain; sfx.pickup(G.combo);
-      popup('+' + gain + (G.combo > 1 ? '  ×' + G.combo : ''), pk.g.position, 'gold');
-      burst(pk.g.position, 22, GOLD, 3.5, 0.7, 0.3);
-      G.dust += (1 + Math.floor(G.combo / 3)) * S.dustMul;
-      G.combo = Math.min(S.comboMax, G.combo + 1); G.comboT = S.comboWin;
-      G.bestChain = Math.max(G.bestChain, G.combo);
+    collectPickup(i);
+  }
+  updateBuddy(dt);
+}
+function collectPickup(i) {
+  const pk = pickups[i];
+  for (const b of buddies) if (b.target === pk) b.target = null;
+  if (pk.kind === 'heart') {
+    P.lives = Math.min(S.maxLives, P.lives + 1); renderLives(); sfx.heart();
+    popup('+1 hull', pk.g.position, 'mint');
+    burst(pk.g.position, 26, MINT, 3.5, 0.8, 0.3);
+  } else {
+    const gold = pk.kind === 'gold' ? 5 : 1;
+    const gain = Math.round(10 * G.combo * S.shardMul) * gold;
+    G.score += gain; sfx.pickup(G.combo);
+    popup((gold > 1 ? 'GOLD +' : '+') + gain + (G.combo > 1 ? '  ×' + G.combo : ''), pk.g.position, 'gold');
+    burst(pk.g.position, gold > 1 ? 50 : 22, GOLD, gold > 1 ? 5 : 3.5, 0.7, 0.3);
+    G.dust += (1 + Math.floor(G.combo / 3)) * S.dustMul * gold;
+    G.combo = Math.min(S.comboMax, G.combo + 1); G.comboT = S.comboWin;
+    G.bestChain = Math.max(G.bestChain, G.combo);
+  }
+  removePickup(i);
+}
+function updateBuddy(dt) {
+  const n = state === 'play' && P.alive ? lv('buddy') : 0;
+  buddies.forEach((b, k) => { b.g.visible = k < n; });
+  _r.crossVectors(P.p, P.f);
+  for (let k = 0; k < n; k++) {
+    const b = buddies[k], bg = b.g;
+    b.core.rotation.y += dt * 4;
+    b.rest -= dt;
+    if (b.target && !pickups.includes(b.target)) b.target = null;
+    if (!b.target && b.rest <= 0) {
+      let bestD = 7;
+      for (const pk of pickups) {
+        if (pk.kind === 'heart' || pk.age < 0.4 || buddies.some((o) => o.target === pk)) continue;
+        const d = chord(P.p, pk.n); if (d < bestD) { bestD = d; b.target = pk; }
+      }
     }
-    removePickup(i);
+    if (b.target) {
+      _b.copy(b.target.g.position).addScaledVector(b.target.n, 0.4);
+      _v.subVectors(_b, bg.position);
+      const d = _v.length();
+      if (d < 0.45) { collectPickup(pickups.indexOf(b.target)); b.target = null; b.rest = 1.4; tone(1600 + k * 200, 0.12, 'sine', 0.06, 2200); continue; }
+      bg.position.addScaledVector(_v, Math.min(1, 10 * dt / d));
+      if (Math.random() < 0.6) emit(bg.position, randomUnit(_v).multiplyScalar(0.3), b.color, rand(0.3, 0.5), 0);
+    } else {
+      // circle around Pip's head
+      const a = T * 2 + b.phase;
+      _b.copy(player.position).addScaledVector(P.p, 1.1 * giantS).addScaledVector(_r, Math.cos(a) * 0.9 * giantS).addScaledVector(P.f, Math.sin(a) * 0.9 * giantS);
+      bg.position.lerp(_b, 1 - Math.exp(-6 * dt));
+    }
   }
 }
 
@@ -1626,19 +1739,19 @@ function updateHud() {
   fill.classList.toggle('ready', P.dashCD <= 0);
   if (lv('drift')) {
     const f = $('driftfill');
-    f.style.width = (G.driftT > 0 ? 100 * G.driftT / 4 : 100 * (1 - G.driftCD / 25)) + '%';
+    f.style.width = (G.driftT > 0 ? 100 * G.driftT / 4 : 100 * (1 - G.driftCD / (25 * S.abCD))) + '%';
     f.classList.toggle('ready', G.driftCD <= 0);
     $('driftbtn').classList.toggle('cool', G.driftCD > 0);
   }
   if (lv('burst')) {
     const f = $('burstfill');
-    f.style.width = (100 * (1 - G.burstCD / 35)) + '%';
+    f.style.width = (100 * (1 - G.burstCD / (35 * S.abCD))) + '%';
     f.classList.toggle('ready', G.burstCD <= 0);
     $('burstbtn').classList.toggle('cool', G.burstCD > 0);
   }
   if (lv('giant')) {
     const f = $('giantfill');
-    f.style.width = (G.giantT > 0 ? 100 * G.giantT / GIANT_TIME : 100 * (1 - G.giantCD / GIANT_CD)) + '%';
+    f.style.width = (G.giantT > 0 ? 100 * G.giantT / S.giantTime : 100 * (1 - G.giantCD / (GIANT_CD * S.abCD))) + '%';
     f.classList.toggle('ready', G.giantCD <= 0);
     $('giantbtn').classList.toggle('cool', G.giantCD > 0);
   }
