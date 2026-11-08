@@ -288,7 +288,16 @@ const UP = new V(0, 1, 0);
 const coarse = matchMedia('(pointer: coarse)').matches;
 
 // ---------- renderer / scene ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// The Raspberry Pi's V3D GPU spends 4-9 ms of each 720p frame on 4x MSAA, enough to drop frames; skip it there.
+const slowGPU = (() => {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2'), d = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : '';
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /V3D|VideoCore/i.test(name);
+  } catch { return false; }
+})();
+const renderer = new THREE.WebGLRenderer({ antialias: !slowGPU });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -306,7 +315,7 @@ const hemi = new THREE.HemisphereLight(0xb4c0ff, 0x3a2148, 1.15);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffe4bd, 2.4);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024); // 2048 cost ~7 ms more GPU time per frame on the Pi 5 (V3D)
 Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 90 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.03;
@@ -790,7 +799,10 @@ function spawnMeteor(n, fall) {
   meteors.push({ n: n.clone(), t: 0, T: fall, warn, mesh, glow, drift: randomTangent(n), spin: new V(rand(-4, 4), rand(-4, 4), rand(-4, 4)) });
 }
 function addEffect(mesh, dur, update) { scene.add(mesh); effects.push({ mesh, t: 0, dur, update }); }
-function disposeMesh(m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+// The disk materials are clones of warnMat/craterMat/shockMat that share one shader program. Disposing the
+// last live clone makes three.js delete that program and recompile it for the next meteor (a 50-130 ms
+// hitch on the Pi 5), so only the geometry is freed; the clones hold no other GPU resources.
+function disposeMesh(m) { scene.remove(m); m.geometry.dispose(); }
 
 function impact(m) {
   const n = m.n;
