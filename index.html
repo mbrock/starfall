@@ -90,7 +90,7 @@
 
   /* Overlay card */
   .overlay {
-    position: fixed; inset: 0; display: grid; place-items: center;
+    position: fixed; inset: 0; display: grid; place-items: safe center;
     padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
     padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -150,7 +150,7 @@
   .best .dust b, .dust { color: var(--gold); }
 
   /* shop */
-  .card.shop { max-width: 56rem; max-height: calc(100dvh - 40px); grid-template-rows: auto auto minmax(0, 1fr) auto; overflow: hidden; }
+  .card.shop { box-sizing: border-box; max-width: 56rem; height: min(calc(100dvh - 32px), 52rem); grid-template-rows: auto auto auto minmax(0, 1fr) auto; overflow: hidden; }
   .shop-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .wallet { font-size: 13px; color: var(--dim); }
   .collect { display: flex; align-items: center; gap: 10px; }
@@ -222,15 +222,6 @@
       <div><span class="label">Best chain</span><b id="r-chain">×1</b></div>
       <div><span class="label">Stardust</span><b id="r-dust" class="dust">+0</b></div>
     </div>
-    <ul class="keys" id="keys">
-      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows <span>walk and turn</span></li>
-      <li><kbd>Space</kbd> <span>dash; you can't be hit mid-dash</span></li>
-      <li><kbd>Mouse</kbd> <span>turn and look around; <kbd>Esc</kbd> frees the cursor</span></li>
-      <li><kbd>Right-click</kbd> <span>blink 3 m forward instantly (uses your dash)</span></li>
-      <li><kbd>Q</kbd> <kbd>E</kbd> <kbd>G</kbd> <span>abilities, once you buy them in the shop</span></li>
-      <li><kbd>P</kbd> <span>pause</span> &nbsp; <kbd>M</kbd> <span>sound on/off</span> &nbsp; <kbd>F</kbd> <span>fullscreen</span></li>
-      <li><span>Grab shards within 3 s of each other to raise the multiplier, up to ×8.</span></li>
-    </ul>
     <div class="row">
       <div class="actions">
         <button class="btn" id="start" type="button">Start</button>
@@ -240,6 +231,15 @@
       </div>
       <span class="best">Best <b id="best">0</b> · <span class="dust"><b id="dustmenu">0</b> stardust</span></span>
     </div>
+    <ul class="keys" id="keys">
+      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows <span>walk and turn</span></li>
+      <li><kbd>Space</kbd> <span>dash; you can't be hit mid-dash</span></li>
+      <li><kbd>Mouse</kbd> <span>turn and look around; <kbd>Esc</kbd> frees the cursor</span></li>
+      <li><kbd>Right-click</kbd> <span>blink 3 m forward instantly (uses your dash)</span></li>
+      <li><kbd>Q</kbd> <kbd>E</kbd> <kbd>G</kbd> <span>abilities, once you buy them in the shop</span></li>
+      <li><kbd>P</kbd> <span>pause</span> &nbsp; <kbd>M</kbd> <span>sound on/off</span> &nbsp; <kbd>F</kbd> <span>fullscreen</span> &nbsp; <kbd>B</kbd> <span>shop</span></li>
+      <li><span>Grab shards within 3 s of each other to raise the multiplier, up to ×8.</span></li>
+    </ul>
   </div>
 </section>
 
@@ -1053,6 +1053,7 @@ addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.code === 'KeyM') setMuted(!muted);
   if (e.code === 'KeyF' && !e.repeat) toggleFullscreen();
+  if (e.code === 'KeyB' && state !== 'play' && !$('overlay').hidden && !$('openshop').hidden) { openShop(); return; }
   if (state === 'play' && e.code === 'KeyP') setPaused(!paused);
   if (state === 'play' && e.code === 'Escape') setPaused(true);
   if (state === 'play' && !paused && (e.code === 'Space' || e.code === 'ShiftLeft' || e.code === 'ShiftRight')) tryDash();
