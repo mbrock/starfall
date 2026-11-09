@@ -6,6 +6,8 @@ import { glowSprite, mat } from '../engine/materials.js';
 import { surfR } from '../sphere.js';
 import { active, game, pip } from '../state.js';
 import { HATS } from './hats.js';
+import { sdf } from '../platform.js';
+import { makeSdfPip } from './pip-sdf.js';
 
 export const GIANT_SCALE = 2.6;
 const lerp = THREE.MathUtils.lerp;
@@ -27,6 +29,7 @@ scarf.rotation.x = Math.PI / 2; scarf.position.y = -0.12; scarf.castShadow = tru
 for (const s of [-1, 1]) {
   const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), eyeMat);
   eye.position.set(0.14 * s, 0.08, 0.37); eye.scale.z = 0.5; body.add(eye);
+  eye.visible = !sdf('pip');
 }
 const antenna = new THREE.Group();
 body.add(antenna);
@@ -37,6 +40,7 @@ body.add(antenna);
   bulb.position.set(-0.025, 0.69, 0);
   bulb.add(glowSprite(0xffc04a, 0.6));
   antenna.add(stalk, bulb);
+  stalk.visible = bulb.material.visible = !sdf('pip'); // keep the bulb's glow sprite
 }
 
 const hats = {};
@@ -80,6 +84,12 @@ const feet = [-1, 1].map((s) => {
   const f = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), feetMat);
   f.position.set(0.17 * s, -0.36, 0.04); f.scale.set(1, 0.7, 1.3); f.castShadow = true; player.add(f); return f;
 });
+
+const sdfPip = sdf('pip') && makeSdfPip({ shellMat, scarfMat, eyeMat, feetMat });
+if (sdfPip) {
+  for (const m of [shell, scarf, ...feet]) m.visible = false;
+  player.add(sdfPip.mesh);
+}
 
 let rainbowScarf = false;
 /**
@@ -127,6 +137,7 @@ export function posePip(dt) {
   bubble.scale.setScalar(1 + Math.sin(t * 4) * 0.04);
   for (const k in hats) if (hats[k].spins) hats[k].g.rotation.y += dt * 1.5;
   if (rainbowScarf) scarfMat.color.setHSL((t * 0.3) % 1, 0.85, 0.6);
+  if (sdfPip) sdfPip.pose(body, feet, antenna);
 }
 
 /** A point `up` m above Pip's center along the planet normal; where popups and bursts about Pip go. */

@@ -14,7 +14,15 @@ export function noise3(x, y, z) {
     + Math.sin(y * 3.3 + z * 2.7 + x * 0.7) * 0.25
     + Math.sin(x * 5.1 - y * 4.3 + z * 3.9) * 0.12;
 }
-export const heightAt = (n) => noise3(n.x * 2.2, n.y * 2.2, n.z * 2.2) * 0.24;
+/** Meteor dents in the ground, { n, k (0-1 strength) }; only the SDF planet experiment (?sdf=planet) adds them. */
+export const dents = [];
+/** Height in meters of a dent's surface at `c` m from its center: a bowl with a raised rim (planet-sdf.js matches it). */
+export const dentH = (c) => { const x = Math.min(c / 1.3, 1); return -0.4 * (1 - x * x) ** 2 + 0.12 * Math.exp(-(((c - 1.25) / 0.3) ** 2)); };
+export function heightAt(n) {
+  let h = noise3(n.x * 2.2, n.y * 2.2, n.z * 2.2) * 0.24;
+  for (const d of dents) h += d.k * dentH(n.distanceTo(d.n) * R);
+  return h;
+}
 /** Distance from the planet's center to the ground under n. */
 export const surfR = (n) => R + heightAt(n);
 /** Straight-line distance in meters between two surface points. */

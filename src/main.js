@@ -7,6 +7,7 @@ import { music, setMusicEnabled, updateMusic } from './engine/music.js';
 import './world/sky.js';
 import { updateDecor } from './world/decor.js';
 import { updateLandmarks } from './world/landmarks.js';
+import { updateDents } from './world/dents.js';
 import { posePip } from './actors/pip.js';
 import { updatePickups } from './actors/pickups.js';
 import { updateMeteors } from './actors/meteors.js';
@@ -96,6 +97,7 @@ renderer.setAnimationLoop((now) => {
   updatePickups(dt);
   updateDecor(dt, pip.p);
   updateLandmarks(dt);
+  updateDents(dt);
   posePip(dt);
   updateParticles(dt);
   updateCamera(dt);

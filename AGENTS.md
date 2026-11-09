@@ -5,6 +5,9 @@ A three.js game with no build step. `index.html` holds the markup, `style.css` t
 
 Run it with `python3 -m http.server 8765` and open http://localhost:8765/. Add `?debug` to get `window.starfall`
 (state, stats, timers, save, `startRun()`, `trigger('giant')`, ...) for poking at it from the console or a test script.
+`?sdf=planet,pip,meteors` (or `all`) and `?planet=dense` turn on rendering experiments: ray-marched signed distance
+fields drawn through `engine/sdf.js`, and a dense mesh planet with carved craters. They are off by default; on the Pi 5 the SDF
+planet runs at about 21 fps, so it is not for the live game.
 
 ## Layout
 

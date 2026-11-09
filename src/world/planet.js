@@ -4,9 +4,12 @@ import * as THREE from 'three';
 import { scene } from '../engine/stage.js';
 import { radialTexture } from '../engine/materials.js';
 import { R, V, noise3, surfR } from '../sphere.js';
+import { densePlanet, sdf } from '../platform.js';
+import { paintSdfPlanet } from './planet-sdf.js';
+import { dentGLSL, dentUniforms } from './dents.js';
 
-const planetGeo = new THREE.IcosahedronGeometry(R, 8);
-{
+const planetGeo = new THREE.IcosahedronGeometry(R, densePlanet ? 40 : 8);
+if (!sdf('planet')) {
   const pos = planetGeo.attributes.position;
   const v = new V(), n = new V();
   for (let i = 0; i < pos.count; i++) {
@@ -16,9 +19,43 @@ const planetGeo = new THREE.IcosahedronGeometry(R, 8);
   }
   planetGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
   planetGeo.computeVertexNormals();
-  const planet = new THREE.Mesh(planetGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.92 }));
+  if (densePlanet) { // smooth normals from the heightfield, for the ?planet=dense comparison
+    const nor = planetGeo.attributes.normal, t1 = new V(), t2 = new V(), a = new V(), b = new V(), c = new V();
+    const ground = (out, t, s) => { out.copy(n).addScaledVector(t, s).normalize(); return out.multiplyScalar(surfR(out)); };
+    for (let i = 0; i < pos.count; i++) {
+      n.fromBufferAttribute(pos, i).normalize();
+      t1.crossVectors(n, Math.abs(n.y) < 0.9 ? new V(0, 1, 0) : new V(1, 0, 0)).normalize(); t2.crossVectors(n, t1);
+      ground(a, t1, 0.002).sub(ground(c, t1, -0.002));
+      ground(b, t2, 0.002).sub(ground(c, t2, -0.002));
+      a.cross(b).normalize(); if (a.dot(n) < 0) a.negate();
+      nor.setXYZ(i, a.x, a.y, a.z);
+    }
+  }
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: !densePlanet, roughness: 0.92 });
+  if (densePlanet) material.onBeforeCompile = carveDents;
+  const planet = new THREE.Mesh(planetGeo, material);
   planet.receiveShadow = true;
   scene.add(planet);
+}
+
+// The dense planet carves meteor dents (world/dents.js) by moving its vertices and tilting their normals.
+function carveDents(shader) {
+  Object.assign(shader.uniforms, dentUniforms);
+  shader.vertexShader = `${dentGLSL}\nvarying vec2 vDentMarks;\n` + shader.vertexShader
+    .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+    vec3 dn = normalize(position);
+    float dh = dentHeight(dn);
+    if (dh != 0.0) {
+      vec3 t1 = normalize(cross(dn, abs(dn.y) < 0.9 ? vec3(0, 1, 0) : vec3(1, 0, 0))), t2 = cross(dn, t1);
+      const float e = 0.004; // radians; slope = height change over e * R meters
+      vec2 g = vec2(dentHeight(normalize(dn + t1 * e)) - dentHeight(normalize(dn - t1 * e)),
+                    dentHeight(normalize(dn + t2 * e)) - dentHeight(normalize(dn - t2 * e))) / (2.0 * e * ${R.toFixed(1)});
+      objectNormal = normalize(objectNormal - t1 * g.x - t2 * g.y);
+    }
+    vDentMarks = dentMarks(dn); // per vertex: the dense mesh is fine enough, and it keeps the dent loop out of every pixel`)
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\n    transformed += dn * dh;');
+  shader.fragmentShader = `${dentGLSL}\nvarying vec2 vDentMarks;\n` + shader.fragmentShader
+    .replace('#include <color_fragment>', '#include <color_fragment>\n  dentPaint(vDentMarks, diffuseColor.rgb, totalEmissiveRadiance);');
 }
 
 let painted = null;
@@ -26,6 +63,8 @@ let painted = null;
 export function paintPlanet(palette) {
   if (painted === palette) return;
   painted = palette;
+  paintSdfPlanet(palette);
+  if (sdf('planet')) return;
   const [deep, grass, high, sand, bloom] = palette.map((h) => new THREE.Color(h));
   const pos = planetGeo.attributes.position, colors = planetGeo.attributes.color.array;
   const a = new V(), b = new V(), c = new V(), n = new V(), col = new THREE.Color();

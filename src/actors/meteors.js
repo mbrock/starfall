@@ -7,6 +7,9 @@ import { burst, emit } from '../engine/particles.js';
 import { R, V, rand, randomTangent, randomUnit, surfR } from '../sphere.js';
 import { active, game } from '../state.js';
 import { addDisk, removeDisk } from '../world/disks.js';
+import { dentPlanet } from '../world/dents.js';
+import { densePlanet, sdf } from '../platform.js';
+import { sdfRock } from './meteor-sdf.js';
 import { knockDecor } from '../world/decor.js';
 
 /** Radius in meters of a meteor's warning ring and the area that hurts Pip. */
@@ -22,7 +25,7 @@ export const meteors = [];
 const effects = [];
 
 export function spawnMeteor(n, fall) {
-  const mesh = new THREE.Mesh(rockGeo, rockMat);
+  const mesh = sdf('meteors') ? sdfRock() : new THREE.Mesh(rockGeo, rockMat);
   mesh.castShadow = true;
   mesh.add(glowSprite(null, 3, glowMat));
   scene.add(mesh);
@@ -34,7 +37,8 @@ export function clearMeteors() { for (const m of meteors) removeMeteor(m); meteo
 const dust = new THREE.Color(0x8a7fb8);
 function land(m) {
   const n = m.n, at = n.clone().multiplyScalar(surfR(n) + 0.1);
-  effects.push({ mesh: addDisk('crater', n, 1.25), t: 0, dur: 9, update: (u, k) => { u.heat.value = Math.max(0, 1 - k * 5); u.fade.value = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3; } });
+  if (sdf('planet') || densePlanet) dentPlanet(n); // these planets carve the crater into the ground
+  else effects.push({ mesh: addDisk('crater', n, 1.25), t: 0, dur: 9, update: (u, k) => { u.heat.value = Math.max(0, 1 - k * 5); u.fade.value = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3; } });
   effects.push({ mesh: addDisk('shock', n, BLAST * 1.9), t: 0, dur: 0.55, update: (u, k) => { u.prog.value = k; } });
   burst(at, 46, COLORS.ember, 7, 1.0, 1, n, 1.2);
   burst(at, 24, COLORS.gold, 4, 0.7, 0.6, n, 1.0);
