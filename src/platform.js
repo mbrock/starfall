@@ -22,8 +22,6 @@ export const debug = params.has('debug');
 // (engine/sdf.js).
 const sdfList = (params.get('sdf') ?? '').split(',');
 export const sdf = (part) => sdfList.includes(part) || sdfList.includes('all');
-// ?travel=rocket|jet|comet turns on one of the prototype ways of travelling to other worlds (game/travel.js).
-export const travelMode = params.get('travel');
 // Pip, meteors and shards move with the Box3D physics engine (engine/physics.js); ?physics=off goes back to the
 // scripted movement.
 export const physicsMode = params.get('physics') !== 'off';

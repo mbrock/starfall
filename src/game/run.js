@@ -20,7 +20,7 @@ import { computeStats } from './catalog.js';
 import { resetAbilities, tickAbilities } from './abilities.js';
 import { currentTrail } from './cosmetics.js';
 import { camPos } from './camera.js';
-import { bodyMul, meteorRate, onTravelCollect, onTravelMeteor, resetTravel, travelling, updateTravelGround } from './travel.js';
+import { bodyMul, meteorRate, onTravelCollect, resetTravel, travelling, updateTravelGround } from './travel.js';
 import { flashHurt, renderLives, showRunHud } from '../ui/hud.js';
 import { hideTouchControls, showGameOver, showPause } from '../ui/menus.js';
 import { popup } from '../ui/popups.js';
@@ -120,7 +120,6 @@ export function onMeteorLand(n) {
     run.score += bonus;
     popup('close call +' + bonus, abovePip(0.9), 'ink');
   }
-  if (onTravelMeteor(n)) return; // left a jet core instead
   if (stats.clover && pip.lives < stats.maxLives && Math.random() < 0.1) dropPickup(pointNear(n, 0, 0.05), 'heart', 9, true);
   else if (Math.random() < 0.8) {
     dropPickup(pointNear(n, 0, 0.05), stats.goldRush && Math.random() < 0.125 ? 'gold' : 'shard', stats.shardLife, true);
@@ -142,8 +141,6 @@ function collect(pk) {
     pip.lives = Math.min(stats.maxLives, pip.lives + 1); renderLives(); sfx.heart();
     popup('+1 hull', pk.g.position, 'mint');
     burst(pk.g.position, 26, COLORS.mint, 3.5, 0.8, 0.3);
-  } else if (pk.kind === 'core') {
-    burst(pk.g.position, 30, COLORS.mint, 4, 0.7, 0.3);
   } else {
     const gold = pk.kind === 'gold' ? 5 : 1;
     const gain = Math.round(10 * run.combo * stats.shardMul * bodyMul()) * gold;
@@ -248,7 +245,7 @@ function collectNearby(dt) {
 
 export function updatePlay(dt) {
   run.time += dt;
-  if (travelling()) { parkPipBody(); return; } // in flight between worlds: game/travel.js flies Pip
+  if (travelling()) { parkPipBody(); return; } // taking off or flying between worlds: game/travel.js flies Pip
   movePip(dt);
   pipEffects(dt);
   spawnThings(dt);

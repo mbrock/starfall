@@ -1,4 +1,4 @@
-// Things lying on the ground for Pip to grab: star shards, golden shards, hull hearts and jet cores.
+// Things lying on the ground for Pip to grab: star shards, golden shards and hull hearts.
 // This module owns how they look and fade; game/run.js decides what grabbing one does. With physics on (the default) each
 // one is a small ball that falls, bounces and rolls (tossed out of the crater that made it); the model floats
 // above the ball.
@@ -17,7 +17,6 @@ const shardGeo = new THREE.OctahedronGeometry(0.3, 0);
 export const PICKUP_KINDS = {
   shard: { geo: shardGeo, mat: mat(0xffd36b, { emissive: 0xffa21f, emissiveIntensity: 1.6, roughness: 0.3 }), size: 1, glow: glowMaterial(0xffb43a, 0.85), glowSize: 1.7, beam: beamMat(0xffb43a), color: COLORS.gold },
   gold: { geo: shardGeo, mat: mat(0xfff1a8, { emissive: 0xffd36b, emissiveIntensity: 2.2, roughness: 0.15, metalness: 0.4 }), size: 1.7, glow: glowMaterial(0xfff0a0, 0.85), glowSize: 3, beam: beamMat(0xffb43a), color: COLORS.gold },
-  core: { geo: new THREE.TorusGeometry(0.22, 0.09, 6, 14), mat: mat(0x9fe8ff, { emissive: 0x3ab8ff, emissiveIntensity: 1.8, roughness: 0.2 }), size: 1.2, glow: glowMaterial(0x7ee0ff, 0.9), glowSize: 2.4, beam: beamMat(0x7ee0ff), color: COLORS.mint }, // jet cores (?travel=jet)
   heart: { geo: new THREE.IcosahedronGeometry(0.27, 0), mat: mat(0x6ef0c2, { emissive: 0x1fbf8a, emissiveIntensity: 1.4, roughness: 0.3 }), size: 1, glow: glowMaterial(0x6ef0c2, 0.85), glowSize: 1.7, beam: beamMat(0x6ef0c2), color: COLORS.mint },
 };
 

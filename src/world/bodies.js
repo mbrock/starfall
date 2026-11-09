@@ -1,4 +1,4 @@
-// The bodies Pip can travel to (only with ?travel=..., see game/travel.js). Each body is one mesh: the one Pip
+// The worlds Pip can travel to (game/travel.js). Each body is one mesh: the one Pip
 // stands on sits at the origin and the others hang in the sky at their offset from it, so flying in and landing
 // never swaps a model. Home is the smooth cratered planet (world/planet.js); the others are cheaper flat-shaded
 // meshes, and meteors only carve craters at home (the crater shader assumes the home planet's radius).
@@ -36,7 +36,7 @@ export const bodyById = (id) => BODIES.find((b) => b.id === id);
 export const here = { body: HOME };
 
 let built = false;
-/** Make the sky models. Only travel mode calls this, so the plain game draws exactly what it always did. */
+/** Make the worlds' models; game/travel.js calls it once at load. */
 export function buildBodies() {
   if (built) return;
   built = true;

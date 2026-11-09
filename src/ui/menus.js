@@ -3,7 +3,7 @@ import { $, coarse } from '../platform.js';
 import { audio } from '../engine/audio.js';
 import { music } from '../engine/music.js';
 import { save } from '../save.js';
-import { game } from '../state.js';
+import { game, stats } from '../state.js';
 import { fmtTime } from './hud.js';
 
 export function renderMenuDust() { $('dustmenu').textContent = save.dust; }
@@ -47,7 +47,9 @@ export function showGameOver(result) {
   $('headline').innerHTML = 'The sky<br><em>won</em> this time';
   $('lede').textContent = result.time < 30
     ? 'Watch the rings fill up; you have until the fill reaches the edge. Dash right before impact to slip through.'
-    : 'Meteors fall faster the longer you last. Chain shards quickly to keep the multiplier climbing.';
+    : !stats.launch && save.dust >= 40
+      ? 'Other worlds hang in the sky. Buy the Launch Base in the shop and fly to them; shards out there are worth more.'
+      : 'Meteors fall faster the longer you last. Chain shards quickly to keep the multiplier climbing.';
   $('r-score').textContent = result.score;
   $('r-time').textContent = fmtTime(result.time);
   $('r-chain').textContent = '×' + result.bestChain;

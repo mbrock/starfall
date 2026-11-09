@@ -16,7 +16,7 @@ export const BASE_STATS = {
   abCD: 1, giantTime: 6,
   survivorPay: 1, runBonus: 0,
   shield: false, revive: false, beacons: false, skate: false, goldRush: false, clover: false, headStart: false,
-  drift: false, burst: false, giant: false,
+  drift: false, burst: false, giant: false, launch: false,
   buddies: 0, buddySpeed: 10, buddyRest: 1.4, buddyRange: 7, medicBuddies: false,
 };
 
@@ -51,6 +51,7 @@ export const UPGRADES = [
   { id: 'burst', tab: 'ab', name: 'Star Burst', base: 150, info: `${press('E', 'Burst')} to blast every meteor out of the sky. Recharges in 35 s.`, apply: (s) => { s.burst = true; } },
   { id: 'beacon', tab: 'ab', name: 'Shard Beacons', base: 35, info: 'Beams of light mark every shard, even past the horizon.', apply: (s) => { s.beacons = true; } },
   { id: 'giant', tab: 'ab', name: 'Giant Pip', base: 130, info: `${press('G', 'Giant')} to grow huge for 6 s. Meteors bounce off you, you stomp trees flat, and you grab shards from much further away. While giant, shards show up <b>50% faster</b>. Recharges in 30 s.`, apply: (s) => { s.giant = true; } },
+  { id: 'launch', tab: 'ab', name: 'Launch Base', base: 60, info: `Every <b>10 shards</b> in a run raise a launch base out of the ground. Walk onto it: jets bolt onto Pip's board and you fly to another world. Worlds further out pay <b>up to 2.5×</b> for shards. ${coarse ? 'Steer with your left thumb' : 'Steer with W A S D and the mouse'} in space.`, apply: (s) => { s.launch = true; } },
   { id: 'skate', tab: 'ab', name: 'Skateboard', base: 80, info: 'Pip rides a skateboard. Dashes go <b>60% faster</b> and throw sparks off the wheels.', apply: (s) => { s.skate = true; s.dashSpeed *= 1.6; } },
   { id: 'buddy', tab: 'help', name: 'Star Buddies', max: 8, base: 90, g: 1.5, info: 'Little star helpers circle Pip and fly off to grab nearby shards for you. Each level adds another helper.', fx: (l) => `${l} helper${l === 1 ? '' : 's'}`, apply: (s, l) => { s.buddies = l; } },
   { id: 'wings', tab: 'help', name: 'Helper Wings', max: 5, base: 40, g: 1.5, info: 'Your Star Buddies fly faster and rest less between grabs.', fx: (l) => `+${l * 25}% helper speed`, apply: (s, l) => { s.buddySpeed *= 1 + 0.25 * l; s.buddyRest *= 1 - 0.15 * l; } },

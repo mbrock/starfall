@@ -1,9 +1,9 @@
-// What every way of travelling between bodies shares (game/travel*.js): leaving the ground, flying through
-// space with the world re-centered on whichever body is nearest, and landing with a welcome.
+// Flying between worlds (game/travel.js): leaving the ground, flying through space with the world re-centered on
+// whichever body is nearest, and landing with a welcome.
 //
 // The body Pip is nearest always sits at the origin, so landing and everything after it use the normal
 // surface code. recenter() moves the origin to another body mid-flight; it shifts the camera and particles
-// itself, and the travel style shifts its own objects in onShift(offset).
+// itself, and game/travel.js shifts its own objects in onShift(offset).
 import * as THREE from 'three';
 import { $ } from '../platform.js';
 import { COLORS } from '../engine/materials.js';
@@ -21,7 +21,7 @@ import { popup } from '../ui/popups.js';
 
 export const trip = { on: false, from: HOME, visited: new Set() };
 
-/** Leave the ground: clear the sky and the ground, and hand the camera to the travel style. */
+/** Leave the ground: clear the sky and the ground, and hand the camera to game/travel.js. */
 export function beginTrip() {
   trip.on = true; trip.from = here.body;
   clearMeteors(); clearCraters(); clearPickups(); hideBuddies();
@@ -55,26 +55,6 @@ export function bezier(out, a, b, c, d, u, tangent = false) {
   const v = 1 - u;
   if (!tangent) return out.copy(a).multiplyScalar(v * v * v).addScaledVector(b, 3 * v * v * u).addScaledVector(c, 3 * v * u * u).addScaledVector(d, u * u * u);
   return out.copy(b).sub(a).multiplyScalar(3 * v * v).addScaledVector(_r.copy(c).sub(b), 6 * v * u).addScaledVector(_u.copy(d).sub(c), 3 * u * u).normalize();
-}
-
-const _s = new V(), _q = new V();
-/** Push the middle control points b and c of a flight path sideways so it doesn't cut through the body at the origin. */
-export function detour(b, c, radius) {
-  _s.subVectors(c, b);
-  const k = Math.min(1, Math.max(0, -b.dot(_s) / _s.lengthSq()));
-  _q.copy(b).addScaledVector(_s, k);
-  const miss = radius + 14 - _q.length();
-  if (miss <= 0) return;
-  if (_q.lengthSq() < 1e-4) _q.crossVectors(_s, Math.abs(_s.y) < 0.9 * _s.length() ? new V(0, 1, 0) : new V(1, 0, 0));
-  _q.normalize().multiplyScalar(miss * 1.5);
-  b.add(_q); c.add(_q);
-}
-
-/** The camera's up for a flight along fwd: the current up, turned toward `toward` and kept square to fwd. */
-export function steadyUp(out, fwd, toward, dt) {
-  out.copy(camRig.up).lerp(toward, 1 - Math.exp(-1.5 * dt)).addScaledVector(fwd, -out.dot(fwd));
-  if (out.lengthSq() < 1e-4) out.copy(toward).cross(fwd);
-  return out.normalize();
 }
 
 /** Where a landing on body b at normal n touches the ground, in the current frame. */

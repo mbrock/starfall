@@ -1,5 +1,5 @@
-// Background stars and the moon. Static unless travel is on (game/travel.js), which hides the moon and keeps
-// the stars centered on the camera.
+// Background stars. game/travel.js keeps them centered on the camera, so they stay put while Pip flies between
+// worlds; the moon and planets in the sky are world/bodies.js.
 import * as THREE from 'three';
 import { scene } from '../engine/stage.js';
 import { V, rand, randomUnit } from '../sphere.js';
@@ -18,6 +18,3 @@ g.setAttribute('color', new THREE.BufferAttribute(col, 3));
 export const stars = new THREE.Points(g, new THREE.PointsMaterial({ size: 2 * Math.min(devicePixelRatio, 2), sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
 scene.add(stars);
 
-export const moon = new THREE.Mesh(new THREE.IcosahedronGeometry(9, 2), new THREE.MeshStandardMaterial({ color: 0xc9b8ff, flatShading: true, roughness: 1, emissive: 0x2a1f55, emissiveIntensity: 0.6 }));
-moon.position.set(-90, 55, -120);
-scene.add(moon);

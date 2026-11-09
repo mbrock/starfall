@@ -71,12 +71,10 @@ export const sfx = {
   burst() { noise(0.8, 0.45, 3000, 'bandpass'); tone(1400, 0.5, 'triangle', 0.12, 2800); tone(70, 0.6, 'sine', 0.3, 35); },
   pop() { tone(1200, 0.12, 'sine', 0.15, 400); noise(0.15, 0.2, 4000, 'highpass'); },
   buddyGrab(k) { tone(1600 + k * 200, 0.12, 'sine', 0.06, 2200); },
-  // travel between bodies (game/travel.js)
+  // travel between worlds (game/travel.js)
   unlock() { tone(523, 0.18, 'triangle', 0.14); tone(784, 0.2, 'triangle', 0.14, 0, 0.1); tone(1047, 0.4, 'triangle', 0.14, 0, 0.2); },
-  tick(final) { tone(final ? 1320 : 880, final ? 0.4 : 0.1, 'square', 0.06); },
+  jets() { tone(220, 1.4, 'sawtooth', 0.07, 880); noise(1.4, 0.2, 1200, 'bandpass'); },
   liftoff() { noise(2.6, 0.5, 260); tone(55, 2.4, 'sawtooth', 0.12, 140); },
-  whoosh() { noise(1.2, 0.35, 1800, 'bandpass'); tone(300, 1.0, 'sine', 0.08, 1200); },
   touchdown() { noise(0.7, 0.45, 600); tone(90, 0.5, 'sine', 0.25, 45); tone(660, 0.3, 'triangle', 0.1, 0, 0.25); tone(990, 0.4, 'triangle', 0.1, 0, 0.38); },
   bonk() { tone(140, 0.2, 'square', 0.1, 70); noise(0.2, 0.25, 900); },
-  comet() { noise(2.5, 0.25, 4000, 'bandpass'); tone(1800, 2.2, 'sine', 0.05, 500); },
 };

@@ -24,7 +24,7 @@ live game.
 | `src/actors/` | Pip's model and hats, pickups (shards and hearts), meteors, Star Buddies. |
 | `src/game/` | Rules: `run.js` (a run, scoring, hurt, game over), `abilities.js`, `upgrades.js`, `cosmetics.js`, `catalog.js` (the shop), `camera.js`. |
 | `src/ui/` | DOM: HUD, menus, shop, floating popups. |
-| `src/world/bodies.js`, `src/game/flight.js`, `src/game/travel*.js`, `src/actors/vehicles.js` | Prototype travel to other worlds, only with `?travel=rocket\|jet\|comet` (see below). |
+| `src/world/bodies.js`, `src/game/travel.js`, `src/game/flight.js`, `src/actors/vehicles.js` | Travel to other worlds (see below). |
 | `vendor/box3d/`, `src/engine/physics.js`, `src/world/ground.js`, `src/actors/pip-body.js` | Box3D physics, on unless `?physics=off` (see below). |
 
 Dependencies point downward: `main` → `game` and `ui` → `actors` and `world` → `engine` → `state`, `sphere`, `platform`.
@@ -44,16 +44,18 @@ Most additions are one table entry:
 - **Landmark**: an entry in `LANDMARKS` (`world/landmarks.js`); it gets a spot on the planet and a shop item.
 - **Something that moves every frame**: an `updateX(dt)` in its module, called from the loop in `main.js`.
 
-## Travel to other worlds (prototypes)
+## Travel to other worlds
 
-`?travel=rocket`, `?travel=jet` and `?travel=comet` each turn on one way of reaching other worlds; without the flag
-the game is the one-planet game. The worlds are the `BODIES` table in `world/bodies.js` (radius, terrain, palette,
-decor mix, shard multiplier, meteor rate, place in the sky). Home is the smooth cratered planet; the others are
-flat-shaded meshes without craters, because the crater shader in `world/dents.js` bakes in the home radius. The body Pip stands on is always at the origin: when
-he flies closer to another body, `recenter()` in `game/flight.js` moves that body's mesh to the origin, changes `R` and
-the terrain, respreads the decor and shifts the camera, particles and the style's own objects, so all surface code keeps working. Each
-style module (`game/travel-rocket.js`, `-jet.js`, `-comet.js`) has the same hooks, listed in `game/travel.js`.
-With `?debug`, `starfallTravel.ready()` skips the unlock and `starfall.step(dt)` advances one frame for recordings.
+The Launch Base shop item (`launch` in `UPGRADES`, `stats.launch`) unlocks it: every 10 shards in a run raise a launch
+base ahead of Pip, and walking onto it starts a jet flight that the player steers to another world (`game/travel.js`).
+The worlds are the `BODIES` table in `world/bodies.js` (radius, terrain, palette, decor mix, shard multiplier, meteor
+rate, place in the sky). Home is the smooth cratered planet; the others are flat-shaded meshes without craters,
+because the crater shader in `world/dents.js` bakes in the home radius. The body Pip stands on is always at the
+origin: when he flies closer to another body, `recenter()` in `game/flight.js` moves that body's mesh to the origin,
+changes `R` and the terrain (`setGround()`), respreads the decor and shifts the camera, particles and travel's own
+objects, so all surface code keeps working. While `travelling()`, `updatePlay()` skips the ground rules and parks
+Pip's physics body. With `?debug`, `starfallTravel.ready()` fills the tank and `starfall.step(dt)` advances one frame
+for recordings.
 
 ## Box3D physics
 

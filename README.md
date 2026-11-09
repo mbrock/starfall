@@ -1,6 +1,6 @@
 # Starfall Keeper
 
-A small three.js game. Pip lives on a tiny planet. Red rings show where meteors will land. Dodge them, collect the star shards they leave behind, and spend your stardust in the shop.
+A small three.js game. Pip lives on a tiny planet. Red rings show where meteors will land. Dodge them, collect the star shards they leave behind, and spend your stardust in the shop. Buy the Launch Base and every 10 shards raise a launch pad that jets Pip off to other worlds, where shards are worth more.
 
 Play it: https://mbrock.github.io/starfall/
 

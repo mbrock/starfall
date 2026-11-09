@@ -109,7 +109,6 @@ for (const ab of ABILITIES) {
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); trigger(ab.id); });
   b.addEventListener('click', (e) => { if (e.detail === 0) trigger(ab.id); }); // keyboard activation
 }
-$('jetbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); travelAction(); });
 canvas.addEventListener('pointerdown', (e) => { if (e.button === 2) { e.preventDefault(); trigger('blink'); } });
 
 // Browsers only allow sound after a user gesture.
@@ -144,7 +143,7 @@ function frame(dt) {
   updateLandmarks(dt);
   updateDents(dt);
   posePip(dt);
-  updateTravel(dt); // flights between worlds (only with ?travel=...)
+  updateTravel(dt); // the launch base and flights between worlds
   updateParticles(dt);
   updateCamera(dt);
   updatePopups(dt);
