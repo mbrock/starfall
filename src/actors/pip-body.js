@@ -1,4 +1,4 @@
-// Pip as a Box3D body (only with ?physics=box3d): a ball that floats on a spring (the pogo joint) at his usual
+// Pip as a Box3D body (unless ?physics=off): a ball that floats on a spring (the pogo joint) at his usual
 // height over the ground, steered by a mover joint. Speed builds up and bleeds off the way it does in Quake:
 // friction on the ground, a little steering in the air. Meteor blasts knock him around; trees, rocks, landmarks
 // and meteor rocks block him. game/run.js says where he wants to go; posePip() draws him where the body is.

@@ -1,6 +1,6 @@
 // Falling meteors: a warning ring that fills while the rock falls, then a crater, a shockwave, sparks and
 // knocked-over trees. What a landing means for Pip is up to the onLand callback (game/run.js).
-// With ?physics=box3d the rock survives the landing: it bounces out of its crater and tumbles for a few seconds,
+// With physics on (the default) the rock survives the landing: it bounces out of its crater and tumbles for a few seconds,
 // and the blast throws loose shards and rocks around.
 import * as THREE from 'three';
 import { scene } from '../engine/stage.js';

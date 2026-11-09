@@ -1,5 +1,5 @@
 // Trees, rocks and crystals. Meteors and Giant Pip knock them down; they regrow somewhere else.
-// With ?physics=box3d each has a static collider (trunk or stone) that blocks Pip, shards and meteor rocks.
+// With physics on (the default) each has a static collider (trunk or stone) that blocks Pip, shards and meteor rocks.
 import * as THREE from 'three';
 import { scene } from '../engine/stage.js';
 import { mat } from '../engine/materials.js';

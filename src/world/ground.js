@@ -1,4 +1,4 @@
-// The ground as Box3D sees it (only with ?physics=box3d): the body Pip stands on as a triangle mesh with the same
+// The ground as Box3D sees it (unless ?physics=off): the body Pip stands on as a triangle mesh with the same
 // heights as heightAt() in sphere.js, craters included. The mesh is split into 80 patches so a crater only rebuilds
 // the few it reaches, and only when its depth moves to the next eighth: about 0.15 ms per patch on a desktop.
 import * as THREE from 'three';

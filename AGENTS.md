@@ -25,7 +25,7 @@ live game.
 | `src/game/` | Rules: `run.js` (a run, scoring, hurt, game over), `abilities.js`, `upgrades.js`, `cosmetics.js`, `catalog.js` (the shop), `camera.js`. |
 | `src/ui/` | DOM: HUD, menus, shop, floating popups. |
 | `src/world/bodies.js`, `src/game/flight.js`, `src/game/travel*.js`, `src/actors/vehicles.js` | Prototype travel to other worlds, only with `?travel=rocket\|jet\|comet` (see below). |
-| `vendor/box3d/`, `src/engine/physics.js`, `src/world/ground.js`, `src/actors/pip-body.js` | Box3D physics, only with `?physics=box3d` (see below). |
+| `vendor/box3d/`, `src/engine/physics.js`, `src/world/ground.js`, `src/actors/pip-body.js` | Box3D physics, on unless `?physics=off` (see below). |
 
 Dependencies point downward: `main` → `game` and `ui` → `actors` and `world` → `engine` → `state`, `sphere`, `platform`.
 `ui` may read `game` tables; `game/run.js` calls `ui` to show things. Keep `engine`, `world` and `actors` free of game
@@ -55,13 +55,13 @@ the terrain, respreads the decor and shifts the camera, particles and the style'
 style module (`game/travel-rocket.js`, `-jet.js`, `-comet.js`) has the same hooks, listed in `game/travel.js`.
 With `?debug`, `starfallTravel.ready()` skips the unlock and `starfall.step(dt)` advances one frame for recordings.
 
-## Box3D physics (experiment)
+## Box3D physics
 
-`?physics=box3d` moves Pip, meteor rocks and pickups with [Box3D](https://github.com/erincatto/box3d), compiled to
+The game moves Pip, meteor rocks and pickups with [Box3D](https://github.com/erincatto/box3d), compiled to
 WebAssembly in `vendor/box3d/` (`box3d.wasm`, its Emscripten loader `box3d.js`, and `starfall_box3d.c`, a flat C API
 of numbers and integer handles). `vendor/box3d/build.sh` rebuilds them; it needs the Emscripten SDK and pins the Box3D
-commit. Without the flag `physics` in `engine/physics.js` is null, the wasm never loads and every physics branch is
-skipped. Box3D has one gravity vector, so the world has none and `sf_step` pulls each dynamic body toward the origin.
+commit. `?physics=off` brings back the old scripted movement: `physics` in `engine/physics.js` is null, the wasm never
+loads and every physics branch is skipped. Box3D has one gravity vector, so the world has none and `sf_step` pulls each dynamic body toward the origin.
 
 - `world/ground.js` mirrors the body Pip stands on as 80 triangle-mesh patches with `heightAt()`'s heights; a crater
   rebuilds the patches it reaches each time its depth moves an eighth, and a new body (travel) rebuilds them all.

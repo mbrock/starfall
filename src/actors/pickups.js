@@ -1,5 +1,5 @@
 // Things lying on the ground for Pip to grab: star shards, golden shards, hull hearts and jet cores.
-// This module owns how they look and fade; game/run.js decides what grabbing one does. With ?physics=box3d each
+// This module owns how they look and fade; game/run.js decides what grabbing one does. With physics on (the default) each
 // one is a small ball that falls, bounces and rolls (tossed out of the crater that made it); the model floats
 // above the ball.
 import * as THREE from 'three';

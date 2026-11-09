@@ -1,5 +1,5 @@
-// The Box3D physics engine (Erin Catto's, compiled to WebAssembly in vendor/box3d), only with ?physics=box3d.
-// Without the flag `physics` is null and nothing here loads. Bodies are small integer handles; positions and
+// The Box3D physics engine (Erin Catto's, compiled to WebAssembly in vendor/box3d). With ?physics=off `physics`
+// is null and nothing here loads. Bodies are small integer handles; positions and
 // vectors go in and out as THREE.Vector3s. Gravity pulls toward the origin, where the body Pip stands on sits.
 import * as THREE from 'three';
 import { physicsMode } from '../platform.js';

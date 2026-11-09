@@ -60,7 +60,7 @@ export function setPaused(on) {
   else lockMouse();
 }
 
-/** Leave a pickup at n; toss: it flies out of a fresh crater (with ?physics=box3d). */
+/** Leave a pickup at n; toss: it flies out of a fresh crater (with physics on). */
 function dropPickup(n, kind, life, toss = false) { spawnPickup(n, kind, life, { beacon: stats.beacons, toss }); }
 
 function hurt() {
@@ -128,7 +128,7 @@ export function onMeteorLand(n) {
   }
 }
 
-/** A blast at n throws Pip away from it and up, harder the closer he is (with ?physics=box3d). */
+/** A blast at n throws Pip away from it and up, harder the closer he is (with physics on). */
 function knockFrom(n, dist) {
   const s = clamp(1 - dist / (BLAST + 2.6), 0, 1);
   if (s <= 0) return;

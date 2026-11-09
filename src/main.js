@@ -1,5 +1,5 @@
 // Starfall Keeper's entry point: wires keys, buttons and the gamepad to game actions and runs the frame loop.
-import { $, debug, physicsMode, toggleFullscreen } from './platform.js';
+import { $, debug, toggleFullscreen } from './platform.js';
 import { camera, canvas, renderer, resizeStage, scene } from './engine/stage.js';
 import { updateParticles } from './engine/particles.js';
 import { physics, physicsTiming } from './engine/physics.js';
@@ -32,7 +32,6 @@ import { initMenus, moveFocus, renderMusicButton, renderSoundButton, showControl
 computeStats();
 applyLook();
 initMenus();
-if (physicsMode) $('eyebrow').textContent += ' · Box3D physics';
 
 const playing = () => game.phase === 'play' && !game.paused;
 const canRestart = () => game.phase === 'title' || (game.phase === 'over' && game.overReady);
@@ -138,7 +137,7 @@ function frame(dt) {
   game.clock += dt;
   if (game.phase === 'play') updatePlay(dt);
   else updateDemo(dt);
-  if (physics && dt > 0) { updateGround(travelling()); physics.step(dt); syncPip(); } // only with ?physics=box3d
+  if (physics && dt > 0) { updateGround(travelling()); physics.step(dt); syncPip(); } // null with ?physics=off
   updateMeteors(dt, onMeteorLand);
   updatePickups(dt);
   updateDecor(dt, pip.p);
