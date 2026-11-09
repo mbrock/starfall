@@ -18,7 +18,7 @@ live game.
 | `src/save.js` | localStorage progress (`save.dust`, `levels`, `equip`, `best`), `lv(id)`, `owns(item)`. |
 | `src/platform.js` | Device facts (`coarse` touch, `slowGPU`), safe storage, fullscreen. |
 | `src/sphere.js` | Planet math: surface points are unit vectors; `surfR`, `chord`, `pointNear`, `advance`, `standOn`. `R` is the radius of whichever body Pip stands on (a live binding that `setGround()` changes). |
-| `src/input.js` | Keyboard, mouse and touch read into state that `game/run.js` polls. |
+| `src/input.js` | Keyboard, mouse, touch and gamepad read into state that `game/run.js` polls; `main.js` maps gamepad buttons to actions. |
 | `src/engine/` | Renderer and lights (`stage`), shared materials and colors, the particle pool, sound effects, menu music. |
 | `src/world/` | The planet and its palettes, sky, decor (trees and rocks), meteor craters (`dents.js`), terrain disks (warning rings, shockwaves), landmarks. |
 | `src/actors/` | Pip's model and hats, pickups (shards and hearts), meteors, Star Buddies. |
@@ -37,8 +37,9 @@ Most additions are one table entry:
 
 - **Upgrade or one-time perk**: an entry in `UPGRADES` (`game/upgrades.js`) with `apply(stats, level)`, plus a default in
   `BASE_STATS`. Gameplay code reads `stats.x`, never `lv('id')`.
-- **Ability with a key or button**: an entry in `ABILITIES` (`game/abilities.js`), and its HUD pill and touch button in
-  `index.html`. `active('id')` tells other code it is running.
+- **Ability with a key or button**: an entry in `ABILITIES` (`game/abilities.js`) with its key, controller button
+  (`pad`) and touch button, plus its HUD pill and touch button in `index.html`. `active('id')` tells other code it is
+  running.
 - **Cosmetic**: a row in the slot's table in `game/cosmetics.js`; a new hat model goes in `actors/hats.js`.
 - **Landmark**: an entry in `LANDMARKS` (`world/landmarks.js`); it gets a spot on the planet and a shop item.
 - **Something that moves every frame**: an `updateX(dt)` in its module, called from the loop in `main.js`.
@@ -82,8 +83,9 @@ skipped. Box3D has one gravity vector, so the world has none and `sf_step` pulls
 - Meteors dent the ground for about 24 s, so ground height changes over time. Things that sit on the ground read
   `surfR(n)` every frame (Pip, pickups, landmarks) or stay out of craters (regrowing decor). Shaders draw craters per
   vertex with `dentGLSL` from `world/dents.js`; looping over the craters per pixel cost about 3 ms of GPU time on the Pi.
-- It must play on phones: anything a key does needs a touch path (`coarse` in `platform.js`, `(pointer: coarse)` in
-  CSS), and layouts must respect the safe-area insets. Check portrait and landscape.
+- It must play on phones and with a controller (the Pi kiosk uses one): anything a key does needs a controller button
+  and a touch path (`coarse` in `platform.js`, `(pointer: coarse)` in CSS), and layouts must respect the safe-area
+  insets. Check portrait and landscape.
 - Ability and shop descriptions use `coarse` to say "Tap" or "Press"; keep both wordings when adding one.
 
 ## Checking a change

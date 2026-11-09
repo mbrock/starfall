@@ -21,6 +21,19 @@ export function initMenus() {
   }
 }
 
+/** With a controller connected, the title card shows its buttons instead of the keyboard list. */
+export function showControllerHelp(on) {
+  $('controller-hint').hidden = !on;
+  if (game.phase === 'title') $('keys').hidden = on;
+}
+
+/** Move focus to the next (dir 1) or previous (dir -1) enabled, visible button inside scope, wrapping around. */
+export function moveFocus(scope, dir) {
+  const choices = [...scope.querySelectorAll('button:not(:disabled)')].filter((b) => b.getClientRects().length);
+  const i = choices.indexOf(document.activeElement);
+  choices[i < 0 ? (dir > 0 ? 0 : choices.length - 1) : (i + dir + choices.length) % choices.length]?.focus();
+}
+
 export function showPause(on) {
   $('pause').hidden = !on;
   $('touch-controls').hidden = !coarse || on || game.phase !== 'play';

@@ -14,6 +14,16 @@ Play it: https://mbrock.github.io/starfall/
 - **P**: pause
 - **M**: sound on or off
 
+### With a controller
+
+Xbox and other standard gamepads also work: left stick moves and turns,
+right stick looks, **A** dashes, **B** blinks, **X** uses Star Burst,
+**Y** uses Giant Pip, **LB** uses Time Drift and **RB** launches the jets
+when travel is on. **Menu/Start** pauses or resumes. Use the D-pad or left
+stick to choose menu buttons and **A** to select; **B** closes the shop or
+resumes. Press a controller button once if the browser has not detected it
+yet. Disconnecting it pauses play.
+
 ### On a phone
 
 Play in portrait or landscape. Use your left thumb on the left half of the planet:

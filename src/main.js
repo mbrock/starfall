@@ -1,4 +1,4 @@
-// Starfall Keeper's entry point: wires keys and buttons to game actions and runs the frame loop.
+// Starfall Keeper's entry point: wires keys, buttons and the gamepad to game actions and runs the frame loop.
 import { $, debug, physicsMode, toggleFullscreen } from './platform.js';
 import { camera, canvas, renderer, resizeStage, scene } from './engine/stage.js';
 import { updateParticles } from './engine/particles.js';
@@ -17,17 +17,17 @@ import { updatePickups } from './actors/pickups.js';
 import { updateMeteors } from './actors/meteors.js';
 import { game, pip, run, stats, timers } from './state.js';
 import { save } from './save.js';
-import { mouse, resetTouch } from './input.js';
+import { mouse, pad, padHeld, padPressed, pollPad, resetTouch } from './input.js';
 import { ABILITIES, trigger } from './game/abilities.js';
 import { computeStats } from './game/catalog.js';
 import { applyLook } from './game/cosmetics.js';
 import { onMeteorLand, setPaused, startRun, updateDemo, updatePlay } from './game/run.js';
 import { updateCamera } from './game/camera.js';
 import { travelAction, travelling, updateTravel } from './game/travel.js';
-import { updateHud } from './ui/hud.js';
+import { labelControls, updateHud } from './ui/hud.js';
 import { updatePopups } from './ui/popups.js';
 import { closeShop, isShopOpen, openShop } from './ui/shop.js';
-import { initMenus, renderMusicButton, renderSoundButton } from './ui/menus.js';
+import { initMenus, moveFocus, renderMusicButton, renderSoundButton, showControllerHelp } from './ui/menus.js';
 
 computeStats();
 applyLook();
@@ -52,6 +52,45 @@ addEventListener('keydown', (e) => {
   else if (canRestart() && confirm) startRun();
   else if (game.paused && confirm) setPaused(false);
 });
+
+// ---------- gamepad ----------
+// In play: ability buttons from the ABILITIES table, RB launches (travel, like J), Menu pauses. On a card (title,
+// game over, shop, pause): the D-pad or left stick moves focus between buttons, A presses the focused one, B closes
+// the shop or resumes. Disconnecting the controller mid-run pauses.
+let menuDir = 0, menuRepeatAt = 0;
+function handlePad(dt) {
+  if (pollPad(dt)) {
+    labelControls(pad.connected);
+    showControllerHelp(pad.connected);
+    if (!pad.connected && playing()) setPaused(true);
+  }
+  if (!pad.connected) return;
+  if (pad.down.some((d, i) => d && !pad.was[i])) { initAudio(); updateMusic(); }
+  const card = isShopOpen() ? $('shop') : game.paused ? $('pause') : !$('overlay').hidden ? $('overlay') : null;
+  if (!card) {
+    menuDir = 0;
+    if (!playing()) return;
+    if (padPressed('Menu')) { setPaused(true); return; }
+    for (const ab of ABILITIES) if (ab.pad && padPressed(ab.pad)) trigger(ab.id);
+    if (padPressed('RB')) travelAction();
+    return;
+  }
+  const [x, y] = pad.axes;
+  const dir = padHeld('Up') || padHeld('Left') || y < -0.6 || x < -0.6 ? -1
+    : padHeld('Down') || padHeld('Right') || y > 0.6 || x > 0.6 ? 1 : 0;
+  const now = performance.now();
+  if (dir && (dir !== menuDir || now >= menuRepeatAt)) {
+    moveFocus(card, dir);
+    menuRepeatAt = now + (dir === menuDir ? 160 : 400); // a held direction repeats after a pause
+  }
+  menuDir = dir;
+  if (padPressed('B') && isShopOpen()) closeShop();
+  else if ((padPressed('B') || padPressed('Menu')) && game.paused) setPaused(false);
+  else if (padPressed('A') && (game.phase !== 'over' || game.overReady)) {
+    const focused = card.contains(document.activeElement) && document.activeElement.matches('button:not(:disabled)');
+    (focused ? document.activeElement : game.paused ? $('resume') : isShopOpen() ? $('closeshop') : $('start')).click();
+  }
+}
 
 // ---------- buttons and touch ----------
 $('start').addEventListener('click', startRun);
@@ -114,7 +153,11 @@ function frame(dt) {
   renderer.render(scene, camera);
 }
 let last = performance.now();
-renderer.setAnimationLoop((now) => { frame(Math.min(0.05, (now - last) / 1000)); last = now; });
+renderer.setAnimationLoop((now) => {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  handlePad(dt);
+  frame(dt);
+});
 
 // step(dt) stops the real-time loop and advances exactly one frame, for recording smooth clips in slow browsers.
 const step = (dt = 1 / 60) => { renderer.setAnimationLoop(null); frame(dt); };

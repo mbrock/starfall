@@ -1,11 +1,12 @@
-// Abilities Pip triggers with a key or a touch button. Each entry is everything about one ability:
+// Abilities Pip triggers with a key, a controller button or a touch button. Each entry is everything about one ability:
 // controls, HUD elements, whether the player has it, how long it lasts and recharges, and what it does.
 // Timers live in state.js (timers[id] = { t, cd }); active(id) is true while one is running.
 // To add an ability: add an entry here and its HUD meter / touch button in index.html.
 //
-// Fields: keys (KeyboardEvent.code list), button (touch button id), hud + meter (desktop HUD pill and its fill),
-// drains (meter shows time left while active), timer (share another ability's timer), owned(), duration(),
-// cooldown(), use() (runs after the timer starts), end() (runs when the active time runs out).
+// Fields: keys (KeyboardEvent.code list), pad (controller button name, see PAD in input.js), button (touch button id),
+// hud + meter (desktop HUD pill and its fill; the pill's <kbd> shows the key or controller button), drains (meter
+// shows time left while active), timer (share another ability's timer), owned(), duration(), cooldown(), use() (runs
+// after the timer starts), end() (runs when the active time runs out).
 import { COLORS } from '../engine/materials.js';
 import { burst, emit } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
@@ -20,14 +21,14 @@ const _b = new V(), _v = new V();
 
 export const ABILITIES = [
   {
-    id: 'dash', keys: ['Space', 'ShiftLeft', 'ShiftRight'], button: 'dashbtn', meter: 'dashfill',
+    id: 'dash', keys: ['Space', 'ShiftLeft', 'ShiftRight'], pad: 'A', button: 'dashbtn', meter: 'dashfill',
     owned: () => true, duration: () => stats.dashT, cooldown: () => stats.dashCD,
     // Pip can't be hit mid-dash; game/run.js reads active('dash') for speed and safety.
     use() { sfx.dash(); burst(player.position, 14, COLORS.white, 2.5, 0.5, 0.2); },
   },
   {
     // Right-click: jump instantly in the direction Pip is facing. Shares the dash recharge.
-    id: 'blink', timer: 'dash', button: 'blinkbtn',
+    id: 'blink', timer: 'dash', pad: 'B', button: 'blinkbtn',
     owned: () => true, duration: () => 0.12 /* a moment of safety on arrival */, cooldown: () => stats.dashCD,
     use() {
       const from = player.position.clone();
@@ -43,12 +44,12 @@ export const ABILITIES = [
   },
   {
     // Meteors fall at 30% speed while active (actors/meteors.js).
-    id: 'drift', keys: ['KeyQ'], button: 'driftbtn', hud: 'ab-drift', meter: 'driftfill', drains: true,
+    id: 'drift', keys: ['KeyQ'], pad: 'LB', button: 'driftbtn', hud: 'ab-drift', meter: 'driftfill', drains: true,
     owned: () => stats.drift, duration: () => 4, cooldown: () => 25 * stats.abCD,
     use() { sfx.drift(); popup('time drift', abovePip(1), 'mint'); },
   },
   {
-    id: 'burst', keys: ['KeyE'], button: 'burstbtn', hud: 'ab-burst', meter: 'burstfill',
+    id: 'burst', keys: ['KeyE'], pad: 'X', button: 'burstbtn', hud: 'ab-burst', meter: 'burstfill',
     owned: () => stats.burst, cooldown: () => 35 * stats.abCD,
     use() {
       sfx.burst(); shake(0.35);
@@ -64,7 +65,7 @@ export const ABILITIES = [
   },
   {
     // While active: meteors bounce off, decor gets stomped, reach and ambient shards go up (game/run.js), Pip grows (actors/pip.js).
-    id: 'giant', keys: ['KeyG'], button: 'giantbtn', hud: 'ab-giant', meter: 'giantfill', drains: true,
+    id: 'giant', keys: ['KeyG'], pad: 'Y', button: 'giantbtn', hud: 'ab-giant', meter: 'giantfill', drains: true,
     owned: () => stats.giant, duration: () => stats.giantTime, cooldown: () => 30 * stats.abCD,
     use() {
       run.stompT = 0; sfx.giant(); shake(0.4);

@@ -14,7 +14,7 @@ import { BODIES, here, offsetOf } from '../world/bodies.js';
 import { board, player } from '../actors/pip.js';
 import { pickups, spawnPickup } from '../actors/pickups.js';
 import { jetFlames, jets, moteMat, rockGeo, rockMat } from '../actors/vehicles.js';
-import { readMove, takeMouseTurn } from '../input.js';
+import { pad, readMove, takeMouseTurn } from '../input.js';
 import { glowSprite } from '../engine/materials.js';
 import { popup } from '../ui/popups.js';
 import { applyLook } from './cosmetics.js';
@@ -252,7 +252,7 @@ export function status() {
     return { text: st.fuel > 0 ? `Jet fuel ${'▮'.repeat(Math.ceil(s / 4))}${'▯'.repeat(Math.ceil(FUEL / 4) - Math.ceil(s / 4))} ${s} s · fly into a world to land` : 'Out of fuel: coasting to the nearest world', hot: st.fuel <= 5 };
   }
   if (trip.on) return null;
-  if (st.cores >= CORES) return { text: coarse ? 'Jets ready: tap Launch' : 'Jets ready: press J to blast off', hot: true };
+  if (st.cores >= CORES) return { text: coarse ? 'Jets ready: tap Launch' : pad.connected ? 'Jets ready: press RB to blast off' : 'Jets ready: press J to blast off', hot: true };
   return { text: `Jet cores ${'◆'.repeat(st.cores)}${'◇'.repeat(CORES - st.cores)} (blue, from craters)` };
 }
 

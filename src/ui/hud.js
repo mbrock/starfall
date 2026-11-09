@@ -18,6 +18,16 @@ export function showRunHud() {
   renderLives();
 }
 
+/** Show controller buttons instead of keys on the ability pills while a gamepad is connected. */
+export function labelControls(controller) {
+  for (const ab of ABILITIES) {
+    const kbd = ab.meter && ab.pad && $(ab.meter).closest('.ab, .dash').querySelector('kbd');
+    if (!kbd) continue;
+    kbd.dataset.key ??= kbd.textContent;
+    kbd.textContent = controller ? ab.pad : kbd.dataset.key;
+  }
+}
+
 export function renderLives() {
   const box = $('lives');
   if (box.children.length !== stats.maxLives) box.innerHTML = '<span></span>'.repeat(stats.maxLives);
