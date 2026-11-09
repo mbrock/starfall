@@ -39,11 +39,14 @@ const tags = BODIES.map(() => {
   $('travel-tags').appendChild(el); return el;
 });
 {
-  // Compile every shader travel uses now, rather than in the middle of a run (a hitch on the Pi).
-  const models = [pad.g, beam, board, jets, motes[0], rocks[0].m], shown = models.map((o) => o.visible);
-  for (const o of models) o.visible = true;
+  // Draw everything travel shows once now, rather than first in the middle of a run: that compiles its shaders and
+  // uploads its geometry, shadow pass included (dropped frames on the Pi when the base first rose).
+  const models = [pad.g, beam, board, jets, motes[0], rocks[0].m], shown = models.map((o) => o.visible), culled = [];
+  for (const o of models) { o.visible = true; o.traverse((c) => { culled.push([c, c.frustumCulled]); c.frustumCulled = false; }); }
   renderer.compile(scene, camera);
+  renderer.render(scene, camera);
   models.forEach((o, i) => { o.visible = shown[i]; });
+  for (const [c, f] of culled) c.frustumCulled = f;
 }
 
 /**
@@ -346,7 +349,8 @@ function renderHud() {
     // which way to walk: the target's direction in Pip's tangent plane, relative to his facing
     _v.copy(s.target).addScaledVector(pip.p, -s.target.dot(pip.p));
     _a.crossVectors(pip.p, pip.f);
-    arrow.style.transform = `rotate(${Math.atan2(-_v.dot(_a), _v.dot(pip.f))}rad)`;
+    const turn = `rotate(${Math.round(Math.atan2(-_v.dot(_a), _v.dot(pip.f)) * 50) / 50}rad)`;
+    if (arrow.style.transform !== turn) arrow.style.transform = turn;
     text += ` · ${Math.round(chord(pip.p, s.target))} m`;
   }
   if (text !== lastText) { $('travel-text').textContent = text; lastText = text; }

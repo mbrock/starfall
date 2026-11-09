@@ -17,18 +17,32 @@ function flame(radius, color) {
   return g;
 }
 
-/** The launch pad: a round platform with lamps and a gantry, standing at y = 0. */
+/** Copies of geometry `part`, one per position in `at`, as one geometry (one draw call instead of one each). */
+function repeat(part, at) {
+  const out = new THREE.BufferGeometry(), index = [];
+  for (const name of Object.keys(part.attributes)) {
+    const src = part.attributes[name], arr = new Float32Array(src.array.length * at.length);
+    at.forEach((p, k) => {
+      arr.set(src.array, k * src.array.length);
+      if (name === 'position') for (let i = k * src.array.length; i < (k + 1) * src.array.length; i += 3) { arr[i] += p[0]; arr[i + 1] += p[1]; arr[i + 2] += p[2]; }
+    });
+    out.setAttribute(name, new THREE.BufferAttribute(arr, src.itemSize));
+  }
+  at.forEach((_, k) => { for (const i of part.index.array) index.push(i + k * part.attributes.position.count); });
+  out.setIndex(index);
+  return out;
+}
+
+/** The launch pad: a round platform with lamps and a gantry, standing at y = 0. Eight meshes' worth in five draw calls. */
 export function makePad() {
   const g = new THREE.Group();
   g.add(M(new THREE.CylinderGeometry(1.5, 1.7, 0.25, 18), stone, 0, 0.12, 0));
   g.add(M(new THREE.CylinderGeometry(1.0, 1.0, 0.04, 18), dark, 0, 0.26, 0));
   const lamp = new THREE.MeshBasicMaterial({ color: 0xffcf5a });
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(M(new THREE.SphereGeometry(0.07, 6, 5), lamp, Math.cos(a) * 1.3, 0.28, Math.sin(a) * 1.3)); }
-  const tower = new THREE.Group();
-  tower.position.set(-1.25, 0, 0);
-  tower.add(M(new THREE.BoxGeometry(0.22, 3.2, 0.22), mat(0xff8a3a), 0, 1.6, 0));
-  for (let k = 0; k < 4; k++) tower.add(M(new THREE.BoxGeometry(0.6, 0.05, 0.05), dark, 0.3, 0.6 + k * 0.7, 0));
-  g.add(tower);
+  const lamps = new THREE.Mesh(repeat(new THREE.SphereGeometry(0.07, 6, 5), Array.from({ length: 8 }, (_, i) => [Math.cos(i / 8 * Math.PI * 2) * 1.3, 0.28, Math.sin(i / 8 * Math.PI * 2) * 1.3])), lamp);
+  g.add(lamps); // too small to need a shadow
+  g.add(M(new THREE.BoxGeometry(0.22, 3.2, 0.22), mat(0xff8a3a), -1.25, 1.6, 0));
+  g.add(new THREE.Mesh(repeat(new THREE.BoxGeometry(0.6, 0.05, 0.05), [0, 1, 2, 3].map((k) => [-0.95, 0.6 + k * 0.7, 0])), dark)); // rungs
   return { g, lamp };
 }
 

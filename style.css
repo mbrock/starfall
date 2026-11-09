@@ -208,6 +208,7 @@ h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 2
   position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: max-content; max-width: 92vw;
   display: grid; gap: 4px; text-shadow: 0 2px 14px rgba(0,0,0,0.8);
 }
+.travel-banner { will-change: opacity, transform; } /* its own layer: fading it doesn't repaint the blurred text */
 .travel-banner b { font: 800 clamp(22px, min(6vw, 7.5vh), 44px) var(--font-display); color: var(--ink); }
 .travel-banner span:last-child { font-size: 13px; color: var(--gold); }
 #travel-tags { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }

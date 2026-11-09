@@ -135,8 +135,9 @@ export function updateBanner(dt) {
   const el = $('travel-banner');
   banner.t += dt;
   const t = banner.t, a = Math.min(t / 0.4, 1, (3.6 - t) / 0.8);
-  el.hidden = a <= 0;
-  if (a > 0) { el.style.opacity = a; el.style.transform = `translate(-50%, ${-50 - 6 * Math.max(0, 1 - t / 0.4)}%)`; }
+  if (el.hidden !== a <= 0) el.hidden = a <= 0;
+  if (a <= 0 || (a === 1 && t > 0.5)) return; // steady in the middle: no style writes, so no repaint
+  el.style.opacity = a; el.style.transform = `translate(-50%, ${-50 - 6 * Math.max(0, 1 - t / 0.4)}%)`;
 }
 
 /** Put Pip back on his home planet at the start of a run. */
