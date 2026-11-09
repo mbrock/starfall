@@ -55,10 +55,14 @@ function build(i) {
   physics.groundPatch(i, p.verts, p.tris);
 }
 
-/** Mark the patches a crater at n reaches. */
+/** Mark the patches with a vertex a crater at n reaches (heights only change at vertices). */
 function touch(n) {
-  const reach = REACH / R;
-  patches.forEach((p, i) => { if (n.dot(p.center) > Math.cos(Math.acos(Math.min(1, p.cos)) + reach)) dirty.add(i); });
+  const reach = REACH / R, near = Math.cos(reach);
+  patches.forEach((p, i) => {
+    if (dirty.has(i) || n.dot(p.center) < Math.cos(Math.acos(Math.min(1, p.cos)) + reach)) return;
+    const d = p.dirs;
+    for (let j = 0; j < d.length; j += 3) if (n.x * d[j] + n.y * d[j + 1] + n.z * d[j + 2] > near) { dirty.add(i); return; }
+  });
 }
 
 /**
@@ -67,8 +71,12 @@ function touch(n) {
  */
 export function updateGround(spread = false) {
   if (!physics) return;
-  let budget = Infinity;
+  // A few patches a frame: a crater's depth step reaches about 5 of them, ~0.17 ms each on the Pi 5, so a deepening
+  // crater catches up within a frame or two instead of one 3-5 ms frame.
+  let budget = 4;
   if (builtFor !== groundVersion) {
+    // a new body: all at once if Pip stands on it, spread out below if he is still flying in
+    budget = Infinity;
     // about 0.3 m between vertices, like the home planet's mesh, so craters keep their shape
     patches = layout(Math.max(12, Math.min(52, Math.round(R * 4))));
     physics.clearGround();
