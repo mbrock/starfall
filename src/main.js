@@ -1,15 +1,18 @@
 // Starfall Keeper's entry point: wires keys and buttons to game actions and runs the frame loop.
-import { $, debug, toggleFullscreen } from './platform.js';
+import { $, debug, physicsMode, toggleFullscreen } from './platform.js';
 import { camera, canvas, renderer, resizeStage, scene } from './engine/stage.js';
 import { updateParticles } from './engine/particles.js';
+import { physics, physicsTiming } from './engine/physics.js';
 import { audio, initAudio, setMuted } from './engine/audio.js';
 import { music, setMusicEnabled, updateMusic } from './engine/music.js';
 import './world/sky.js';
 import { updateDecor } from './world/decor.js';
 import { updateLandmarks } from './world/landmarks.js';
 import { updateDents } from './world/dents.js';
+import { updateGround } from './world/ground.js';
 import './world/planet-sdf.js';
 import { posePip } from './actors/pip.js';
+import { pipBody, pipTuning, syncPip } from './actors/pip-body.js';
 import { updatePickups } from './actors/pickups.js';
 import { updateMeteors } from './actors/meteors.js';
 import { game, pip, run, stats, timers } from './state.js';
@@ -20,7 +23,7 @@ import { computeStats } from './game/catalog.js';
 import { applyLook } from './game/cosmetics.js';
 import { onMeteorLand, setPaused, startRun, updateDemo, updatePlay } from './game/run.js';
 import { updateCamera } from './game/camera.js';
-import { travelAction, updateTravel } from './game/travel.js';
+import { travelAction, travelling, updateTravel } from './game/travel.js';
 import { updateHud } from './ui/hud.js';
 import { updatePopups } from './ui/popups.js';
 import { closeShop, isShopOpen, openShop } from './ui/shop.js';
@@ -29,6 +32,7 @@ import { initMenus, renderMusicButton, renderSoundButton } from './ui/menus.js';
 computeStats();
 applyLook();
 initMenus();
+if (physicsMode) $('eyebrow').textContent += ' · Box3D physics';
 
 const playing = () => game.phase === 'play' && !game.paused;
 const canRestart = () => game.phase === 'title' || (game.phase === 'over' && game.overReady);
@@ -95,6 +99,7 @@ function frame(dt) {
   game.clock += dt;
   if (game.phase === 'play') updatePlay(dt);
   else updateDemo(dt);
+  if (physics && dt > 0) { updateGround(travelling()); physics.step(dt); syncPip(); } // only with ?physics=box3d
   updateMeteors(dt, onMeteorLand);
   updatePickups(dt);
   updateDecor(dt, pip.p);
@@ -113,4 +118,4 @@ renderer.setAnimationLoop((now) => { frame(Math.min(0.05, (now - last) / 1000));
 
 // step(dt) stops the real-time loop and advances exactly one frame, for recording smooth clips in slow browsers.
 const step = (dt = 1 / 60) => { renderer.setAnimationLoop(null); frame(dt); };
-if (debug) window.starfall = { game, run, pip, stats, timers, save, startRun, setPaused, trigger, scene, renderer, step };
+if (debug) window.starfall = { game, run, pip, stats, timers, save, startRun, setPaused, trigger, scene, renderer, step, physics: physics && { timing: physicsTiming, pipBody, pipTuning } };

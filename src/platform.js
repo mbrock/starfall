@@ -24,6 +24,8 @@ const sdfList = (params.get('sdf') ?? '').split(',');
 export const sdf = (part) => sdfList.includes(part) || sdfList.includes('all');
 // ?travel=rocket|jet|comet turns on one of the prototype ways of travelling to other worlds (game/travel.js).
 export const travelMode = params.get('travel');
+// ?physics=box3d moves Pip, meteors and shards with the Box3D physics engine (engine/physics.js).
+export const physicsMode = params.get('physics') === 'box3d';
 
 // localStorage throws in some private modes and sandboxed iframes; the game then just forgets.
 export const storage = {

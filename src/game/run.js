@@ -5,11 +5,13 @@ import { COLORS } from '../engine/materials.js';
 import { burst, emit } from '../engine/particles.js';
 import { initAudio, sfx } from '../engine/audio.js';
 import { updateMusic } from '../engine/music.js';
-import { R, V, advance, chord, pointNear, rand, randomUnit, surfR } from '../sphere.js';
+import { R, V, advance, chord, pointNear, rand, randomTangent, randomUnit, surfR } from '../sphere.js';
 import { active, game, pip, run, shake, stats, timers } from '../state.js';
 import { persist, save } from '../save.js';
-import { abovePip, player } from '../actors/pip.js';
-import { clearPickups, pickups, removePickup, spawnPickup } from '../actors/pickups.js';
+import { abovePip, board, player } from '../actors/pip.js';
+import { drivePip, knockPip, parkPipBody, pipBody } from '../actors/pip-body.js';
+import { physics } from '../engine/physics.js';
+import { clearPickups, nudgePickup, pickups, removePickup, spawnPickup } from '../actors/pickups.js';
 import { BLAST, clearMeteors, spawnMeteor } from '../actors/meteors.js';
 import { hideBuddies, resetBuddies, updateBuddies } from '../actors/buddies.js';
 import { knockDecor } from '../world/decor.js';
@@ -58,7 +60,8 @@ export function setPaused(on) {
   else lockMouse();
 }
 
-function dropPickup(n, kind, life) { spawnPickup(n, kind, life, { beacon: stats.beacons }); }
+/** Leave a pickup at n; toss: it flies out of a fresh crater (with ?physics=box3d). */
+function dropPickup(n, kind, life, toss = false) { spawnPickup(n, kind, life, { beacon: stats.beacons, toss }); }
 
 function hurt() {
   if (pip.shield) {
@@ -107,6 +110,7 @@ export function onMeteorLand(n) {
   sfx.boom(clamp(1 - dist / 14, 0.15, 1));
   if (game.phase !== 'play' || !pip.alive) return;
   const hit = dist < BLAST * 0.92;
+  if (physics && !active('giant')) knockFrom(n, dist);
   if (hit && active('giant')) {
     run.score += 5 * run.combo; popup('bonk! +' + 5 * run.combo, abovePip(2.2), 'gold');
     burst(abovePip(1.6), 24, COLORS.gold, 5, 0.7, 0.4, pip.p, 1);
@@ -117,11 +121,20 @@ export function onMeteorLand(n) {
     popup('close call +' + bonus, abovePip(0.9), 'ink');
   }
   if (onTravelMeteor(n)) return; // left a jet core instead
-  if (stats.clover && pip.lives < stats.maxLives && Math.random() < 0.1) dropPickup(pointNear(n, 0, 0.05), 'heart', 9);
+  if (stats.clover && pip.lives < stats.maxLives && Math.random() < 0.1) dropPickup(pointNear(n, 0, 0.05), 'heart', 9, true);
   else if (Math.random() < 0.8) {
-    dropPickup(pointNear(n, 0, 0.05), stats.goldRush && Math.random() < 0.125 ? 'gold' : 'shard', stats.shardLife);
-    if (Math.random() < stats.doubleShard) dropPickup(pointNear(n, 0.07, 0.12), 'shard', stats.shardLife);
+    dropPickup(pointNear(n, 0, 0.05), stats.goldRush && Math.random() < 0.125 ? 'gold' : 'shard', stats.shardLife, true);
+    if (Math.random() < stats.doubleShard) dropPickup(pointNear(n, 0.07, 0.12), 'shard', stats.shardLife, true);
   }
+}
+
+/** A blast at n throws Pip away from it and up, harder the closer he is (with ?physics=box3d). */
+function knockFrom(n, dist) {
+  const s = clamp(1 - dist / (BLAST + 2.6), 0, 1);
+  if (s <= 0) return;
+  _v.subVectors(pip.p, n).addScaledVector(pip.p, -_v.dot(pip.p));
+  if (_v.lengthSq() < 1e-6) randomTangent(pip.p, _v);
+  knockPip(_v.normalize().multiplyScalar(7 * s).addScaledVector(pip.p, 2.5 + 3.5 * s));
 }
 
 function collect(pk) {
@@ -155,6 +168,12 @@ function movePip(dt) {
   pip.f.applyAxisAngle(pip.p, turn * 3.0 * dt);
   let speed = fwd * (fwd < 0 ? 3.2 : stats.speed) * (active('giant') ? 1.25 : 1);
   if (active('dash')) speed = stats.speed * stats.dashSpeed;
+  if (physics) {
+    // the body gets up to speed and slides to a stop; a dash shoves hard and then coasts
+    drivePip(dt, _a.copy(pip.f).multiplyScalar(speed < 0 ? -1 : 1), Math.abs(speed), active('dash') ? 5 : 1, board.visible);
+    pip.moving = Math.min(1, pipBody.speed / stats.speed);
+    return;
+  }
   pip.moving = Math.min(1, Math.abs(speed) / stats.speed);
   advance(pip.p, pip.f, speed * dt);
 }
@@ -222,14 +241,14 @@ function collectNearby(dt) {
   for (let i = pickups.length - 1; i >= 0; i--) {
     const pk = pickups[i];
     const d = chord(pip.p, pk.n);
-    if (pull && d < reach * 2.6 && pk.age > 0.3) pk.n.lerp(pip.p, Math.min(1, dt * 1.2 * pull)).normalize();
+    if (pull && d < reach * 2.6 && pk.age > 0.3) nudgePickup(pk, pip.p, 1.2 * pull, dt);
     if (pk.age >= 0.15 && d <= reach) collect(pk);
   }
 }
 
 export function updatePlay(dt) {
   run.time += dt;
-  if (travelling()) return; // in flight between worlds: game/travel.js flies Pip
+  if (travelling()) { parkPipBody(); return; } // in flight between worlds: game/travel.js flies Pip
   movePip(dt);
   pipEffects(dt);
   spawnThings(dt);
@@ -243,6 +262,7 @@ export function updatePlay(dt) {
 /** Title and game-over screens: harmless meteors near the camera for atmosphere. */
 export function updateDemo(dt) {
   pip.moving = 0; pip.turn = 0;
+  if (physics) drivePip(dt, pip.f, 0, 1, board.visible); // stand still, but still get pushed around
   run.spawnT -= dt;
   if (run.spawnT <= 0) { run.spawnT = rand(0.8, 1.6); spawnMeteor(pointNear(camPos.clone().normalize(), 0.2, 0.9), 1.8); }
 }

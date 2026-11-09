@@ -11,7 +11,8 @@ import { burst, emit } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
 import { V, advance, rand, randomUnit } from '../sphere.js';
 import { game, pip, run, shake, stats, timers } from '../state.js';
-import { abovePip, player, posePip } from '../actors/pip.js';
+import { abovePip, board, player, posePip } from '../actors/pip.js';
+import { placePipBody } from '../actors/pip-body.js';
 import { clearMeteors, meteors } from '../actors/meteors.js';
 import { popup } from '../ui/popups.js';
 
@@ -32,6 +33,7 @@ export const ABILITIES = [
       const from = player.position.clone();
       burst(from, 24, COLORS.white, 3, 0.5, 0.2);
       advance(pip.p, pip.f, stats.blinkDist);
+      placePipBody(board.visible); // with physics: arrive standing still
       posePip(0);
       const to = player.position;
       for (let i = 0; i <= 14; i++) emit(_b.copy(from).lerp(to, i / 14), randomUnit(_v).multiplyScalar(0.4), COLORS.mint, rand(0.3, 0.6), 0);

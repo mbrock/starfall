@@ -8,6 +8,8 @@ import { active, game, pip } from '../state.js';
 import { HATS } from './hats.js';
 import { sdf } from '../platform.js';
 import { makeSdfPip } from './pip-sdf.js';
+import { physics } from '../engine/physics.js';
+import { pipBody, restHeight } from './pip-body.js';
 
 export const GIANT_SCALE = 2.6;
 const lerp = THREE.MathUtils.lerp;
@@ -119,7 +121,8 @@ export function posePip(dt) {
   player.quaternion.setFromRotationMatrix(_m);
   pip.scale = lerp(pip.scale, giant ? GIANT_SCALE : 1, ease(giant ? 7 : 4, dt));
   player.scale.setScalar(pip.scale);
-  player.position.copy(pip.p).multiplyScalar(surfR(pip.p) + (0.42 + (board.visible ? 0.14 : 0)) * pip.scale);
+  if (physics) player.position.copy(pipBody.pos); // the body floats at restHeight() over the ground
+  else player.position.copy(pip.p).multiplyScalar(surfR(pip.p) + restHeight(board.visible));
   if (board.visible) {
     board.rotation.x = lerp(board.rotation.x, dashing ? -0.18 : 0, ease(12, dt));
     board.rotation.z = lerp(board.rotation.z, -pip.turn * 0.18, ease(8, dt));

@@ -8,6 +8,7 @@ import { emit } from '../engine/particles.js';
 import { V, rand, randomUnit, standOn, surfR } from '../sphere.js';
 import { clearDecorAround } from './decor.js';
 import { game } from '../state.js';
+import { CAT, STATIC, physics } from '../engine/physics.js';
 
 const M = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
 const glow = (color, size, y) => { const s = glowSprite(color, size); s.position.y = y; return s; };
@@ -45,6 +46,7 @@ LANDMARKS.forEach((lm, i) => {
   const n = new V(Math.cos(a) * rr, y, Math.sin(a) * rr).normalize();
   const g = new THREE.Group();
   lm.build(g);
+  if (physics) lm.solid = footprint(g);
   standOn(g, n, -0.05);
   g.rotateY(a);
   g.visible = false;
@@ -54,15 +56,34 @@ LANDMARKS.forEach((lm, i) => {
 });
 
 let atHome = true;
+/** With physics: a cylinder around a landmark's solid parts (not its glows and beams), standing on y = 0. */
+function footprint(g) {
+  const box = new THREE.Box3();
+  g.updateMatrixWorld(true);
+  g.traverse((o) => { if (o.isMesh && !o.material.transparent) box.expandByObject(o); });
+  const r = Math.max(-box.min.x, box.max.x, -box.min.z, box.max.z) * 0.85;
+  return { hull: physics.cylinderOf(Math.max(0.3, box.max.y), Math.max(0.15, r)), h: 0, on: false, y: 0 };
+}
+/** Keep a landmark's collider where it stands, solid while it shows. */
+function collide(lm) {
+  const s = lm.solid;
+  if (!s) return;
+  if (!s.h) { s.h = physics.body(STATIC, lm.obj.position); physics.hull(s.h, s.hull, 1, { friction: 0.5, cat: CAT.prop }); s.on = true; }
+  const on = lm.obj.visible;
+  if (on && Math.abs(s.y - lm.obj.position.length()) > 0.02) { s.y = lm.obj.position.length(); physics.place(s.h, lm.obj.position, lm.obj.quaternion); }
+  if (s.on !== on) physics.enable(s.h, s.on = on);
+}
+
 /** Show the landmarks for which built(key) is true. */
 export function showLandmarks(built) {
-  for (const lm of LANDMARKS) { lm.built = built(lm.key); lm.obj.visible = atHome && lm.built; }
+  for (const lm of LANDMARKS) { lm.built = built(lm.key); lm.obj.visible = atHome && lm.built; collide(lm); }
 }
 /** Landmarks stand only on Pip's home planet; hide them while Pip is on another body (world/bodies.js). */
 export function setLandmarksHome(home) {
   atHome = home;
   for (const lm of LANDMARKS) {
     lm.obj.visible = home && !!lm.built;
+    collide(lm);
     if (home) clearDecorAround(lm.n, 1.4);
   }
 }
@@ -75,6 +96,7 @@ export function updateLandmarks(dt) {
   for (const lm of LANDMARKS) {
     if (!lm.obj.visible) continue;
     lm.obj.position.copy(lm.n).multiplyScalar(surfR(lm.n) - 0.05); // settle into craters
+    collide(lm);
     lm.update?.(lm.obj, lm.n);
   }
 }

@@ -9,7 +9,9 @@ export let R = 10;
 /** The ground's bumps: noise sampled at n × freq (+ seed) and scaled by amp meters. */
 export const HOME_TERRAIN = { amp: 0.24, freq: 2.2, seed: 0 };
 let terrain = HOME_TERRAIN;
-export function setGround(radius, shape) { R = radius; terrain = shape; }
+/** Counts setGround() calls, so code that caches the ground's shape can tell when it changed. */
+export let groundVersion = 0;
+export function setGround(radius, shape) { R = radius; terrain = shape; groundVersion++; }
 
 export const rand = (a, b) => a + Math.random() * (b - a);
 export const pick = (list) => list[Math.floor(Math.random() * list.length)];

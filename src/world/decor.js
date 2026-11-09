@@ -1,9 +1,11 @@
 // Trees, rocks and crystals. Meteors and Giant Pip knock them down; they regrow somewhere else.
+// With ?physics=box3d each has a static collider (trunk or stone) that blocks Pip, shards and meteor rocks.
 import * as THREE from 'three';
 import { scene } from '../engine/stage.js';
 import { mat } from '../engine/materials.js';
 import { burst } from '../engine/particles.js';
 import { V, chord, dents, pick, rand, randomUnit, standOn } from '../sphere.js';
+import { CAT, STATIC, physics } from '../engine/physics.js';
 
 const shape = (geo, f) => { f(geo); return geo; };
 const geos = {
@@ -41,12 +43,32 @@ function build(kind) {
   return { obj: g, color, kind };
 }
 
+/** Colliders by kind, in the model's frame at full size 1: [radius, bottom, top] (a capsule; a ball when equal). */
+const SOLID = { tree: [0.2, 0.15, 0.85], round: [0.25, 0.15, 0.8], rock: [0.3, 0.1, 0.1], crystal: [0.18, 0.1, 0.55] };
+const _a = new V(), _b = new V();
+
+/** With physics: give d its collider where it stands, solid while it stands or grows. */
+function collide(d) {
+  if (!physics) return;
+  if (!d.h) {
+    const [r, y0, y1] = SOLID[d.kind].map((x) => x * d.full), o = { friction: 0.5, cat: CAT.prop };
+    d.h = physics.body(STATIC, d.obj.position);
+    if (y0 === y1) physics.sphere(d.h, r, o, _a.set(0, y0, 0));
+    else physics.capsule(d.h, _a.set(0, y0, 0), _b.set(0, y1, 0), r, o);
+    d.on = true;
+  }
+  physics.place(d.h, d.obj.position, d.obj.quaternion);
+  const on = d.state === 'live' || d.state === 'growing';
+  if (d.on !== on) physics.enable(d.h, d.on = on);
+}
+
 /** state: 'live' → 'dying' (shrinks) → 'dead' (hidden, waiting) → 'growing' → 'live'. */
 const decor = [];
 function place(d, n) {
   d.n.copy(n);
   standOn(d.obj, n, -0.06);
   d.obj.rotateY(Math.random() * Math.PI * 2);
+  collide(d);
 }
 for (let i = 0; i < 80; i++) {
   const r = Math.random();
@@ -68,16 +90,17 @@ export function clearDecorAround(n, radius) {
  */
 export function respreadDecor(share) {
   for (const d of decor) {
-    if (share && Math.random() >= (share[d.kind] ?? 0)) { d.state = 'dead'; d.timer = Infinity; d.obj.visible = false; continue; }
+    if (share && Math.random() >= (share[d.kind] ?? 0)) { d.state = 'dead'; d.timer = Infinity; d.obj.visible = false; collide(d); continue; }
+    d.state = 'live';
     place(d, randomUnit());
-    d.state = 'live'; d.s = d.full; d.obj.scale.setScalar(d.s); d.obj.visible = true;
+    d.s = d.full; d.obj.scale.setScalar(d.s); d.obj.visible = true;
   }
 }
 
 /** Knock down standing decor within `radius` m of n, calling onKnock(position, up) for each one. */
 export function knockDecor(n, radius, onKnock) {
   for (const d of decor) if (d.state === 'live' && chord(d.n, n) < radius) {
-    d.state = 'dying';
+    d.state = 'dying'; collide(d);
     burst(d.obj.position.clone().addScaledVector(d.n, 0.6), 10, d.color, 3, 0.8, 1, d.n, 0.8);
     onKnock?.(d.obj.position, d.n);
   }
@@ -91,7 +114,7 @@ export function updateDecor(dt, avoid) {
       d.timer -= dt;
       if (d.timer <= 0) {
         let n; do { n = randomUnit(); } while (chord(n, avoid) < 4 || dents.some((c) => chord(c.n, n) < 2.2)); // not in a crater
-        place(d, n); d.state = 'growing'; d.obj.visible = true;
+        d.state = 'growing'; place(d, n); d.obj.visible = true;
       }
     } else if (d.state === 'growing') { d.s += dt * 1.1; if (d.s >= d.full) { d.s = d.full; d.state = 'live'; } }
     else continue;
