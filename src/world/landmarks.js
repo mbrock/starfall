@@ -63,5 +63,9 @@ export function updateLandmarks(dt) {
     if (s.wave) s.o.rotation.y = Math.sin(game.clock * 3) * 0.25;
     else s.o.rotation[s.axis] += dt * s.speed;
   }
-  for (const lm of LANDMARKS) if (lm.update && lm.obj.visible) lm.update(lm.obj, lm.n);
+  for (const lm of LANDMARKS) {
+    if (!lm.obj.visible) continue;
+    lm.obj.position.copy(lm.n).multiplyScalar(surfR(lm.n) - 0.05); // settle into craters
+    lm.update?.(lm.obj, lm.n);
+  }
 }

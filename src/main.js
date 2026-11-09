@@ -8,6 +8,7 @@ import './world/sky.js';
 import { updateDecor } from './world/decor.js';
 import { updateLandmarks } from './world/landmarks.js';
 import { updateDents } from './world/dents.js';
+import './world/planet-sdf.js';
 import { posePip } from './actors/pip.js';
 import { updatePickups } from './actors/pickups.js';
 import { updateMeteors } from './actors/meteors.js';

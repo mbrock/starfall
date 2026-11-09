@@ -1,6 +1,7 @@
-// Experiment (?sdf=planet or ?planet=dense): meteors carve dents (a bowl with a raised rim) into the planet.
-// The dents list in sphere.js makes gameplay heights follow them; these uniforms and GLSL let either planet
-// draw them: the SDF planet in its distance function, the dense mesh by moving its vertices.
+// Meteor craters: each landing carves a dent (a bowl with a raised rim) that glows, cools and heals after a while.
+// The dents list in sphere.js makes gameplay heights follow them; these uniforms and GLSL let shaders draw them:
+// the planet and the terrain disks move their vertices, the SDF planet experiment adds them to its distance.
+// Craters more than 2.2 m apart don't affect each other, so nothing placed farther than that from one moves.
 import * as THREE from 'three';
 import { R, dents } from '../sphere.js';
 

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { scene } from '../engine/stage.js';
 import { mat } from '../engine/materials.js';
 import { burst } from '../engine/particles.js';
-import { V, chord, pick, rand, randomUnit, standOn } from '../sphere.js';
+import { V, chord, dents, pick, rand, randomUnit, standOn } from '../sphere.js';
 
 const shape = (geo, f) => { f(geo); return geo; };
 const geos = {
@@ -71,14 +71,14 @@ export function knockDecor(n, radius, onKnock) {
   }
 }
 
-/** Shrink fallen decor away and regrow it at least 4 m from `avoid` (Pip). */
+/** Shrink fallen decor away and regrow it at least 4 m from `avoid` (Pip) and out of craters. */
 export function updateDecor(dt, avoid) {
   for (const d of decor) {
     if (d.state === 'dying') { d.s -= dt * 5; if (d.s <= 0) { d.s = 0; d.state = 'dead'; d.timer = rand(6, 12); d.obj.visible = false; } }
     else if (d.state === 'dead') {
       d.timer -= dt;
       if (d.timer <= 0) {
-        let n; do { n = randomUnit(); } while (chord(n, avoid) < 4);
+        let n; do { n = randomUnit(); } while (chord(n, avoid) < 4 || dents.some((c) => chord(c.n, n) < 2.2)); // not in a crater
         place(d, n); d.state = 'growing'; d.obj.visible = true;
       }
     } else if (d.state === 'growing') { d.s += dt * 1.1; if (d.s >= d.full) { d.s = d.full; d.state = 'live'; } }

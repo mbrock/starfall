@@ -1,7 +1,9 @@
-// Shader-drawn disks that hug the terrain: meteor warning rings, craters and shockwaves.
+// Shader-drawn disks that hug the terrain: meteor warning rings and shockwaves. Their vertex shader follows
+// craters (world/dents.js) that open or heal under them.
 import * as THREE from 'three';
 import { scene } from '../engine/stage.js';
-import { R, UP, V, surfR } from '../sphere.js';
+import { R, UP, V, terrainAt } from '../sphere.js';
+import { dentGLSL, dentUniforms } from './dents.js';
 
 /** A disk of `radius` m centered on surface point `center`, draped over the terrain. Its rr attribute is 0 at the center and 1 at the rim. */
 function diskGeometry(center, radius, rings, segs, lift) {
@@ -14,7 +16,7 @@ function diskGeometry(center, radius, rings, segs, lift) {
     for (let s = 0; s < segs; s++) {
       const a = s / segs * Math.PI * 2;
       d.copy(center).multiplyScalar(R).addScaledVector(t1, Math.cos(a) * r).addScaledVector(t2, Math.sin(a) * r).normalize();
-      d.multiplyScalar(surfR(d) + lift);
+      d.multiplyScalar(R + terrainAt(d) + lift);
       pos.push(d.x, d.y, d.z); rr.push(k / rings);
     }
   }
@@ -29,7 +31,9 @@ function diskGeometry(center, radius, rings, segs, lift) {
   return g;
 }
 
-const vertexShader = `attribute float rr; varying float vR; void main(){ vR = rr; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const vertexShader = `${dentGLSL}
+attribute float rr; varying float vR;
+void main(){ vR = rr; vec3 n = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position + n * dentHeight(n), 1.0); }`;
 const common = { vertexShader, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 };
 
 const KINDS = {
@@ -51,22 +55,6 @@ const KINDS = {
         }`,
     }),
   },
-  crater: {
-    rings: 6, segs: 32, lift: 0.08, renderOrder: 1,
-    material: new THREE.ShaderMaterial({
-      ...common,
-      uniforms: { fade: { value: 1 }, heat: { value: 1 } },
-      fragmentShader: `uniform float fade; uniform float heat; varying float vR;
-        void main(){
-          float a = (1.0 - smoothstep(0.5, 1.0, vR)) * 0.62 * fade;
-          float e = (1.0 - smoothstep(0.0, 0.5, vR)) * heat;
-          vec3 c = mix(vec3(0.09, 0.05, 0.16), vec3(1.0, 0.5, 0.18), e);
-          a = max(a, e);
-          if (a < 0.01) discard;
-          gl_FragColor = vec4(c, a);
-        }`,
-    }),
-  },
   shock: {
     rings: 10, segs: 48, lift: 0.14, renderOrder: 3,
     material: new THREE.ShaderMaterial({
@@ -85,7 +73,9 @@ const KINDS = {
 /** Add a disk of the given kind to the scene. Set its look through mesh.material.uniforms. */
 export function addDisk(kind, center, radius) {
   const k = KINDS[kind];
-  const mesh = new THREE.Mesh(diskGeometry(center, radius, k.rings, k.segs, k.lift), k.material.clone());
+  const material = k.material.clone();
+  Object.assign(material.uniforms, dentUniforms); // shared, not the copies clone() makes
+  const mesh = new THREE.Mesh(diskGeometry(center, radius, k.rings, k.segs, k.lift), material);
   mesh.renderOrder = k.renderOrder;
   scene.add(mesh);
   return mesh;

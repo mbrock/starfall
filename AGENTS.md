@@ -5,9 +5,9 @@ A three.js game with no build step. `index.html` holds the markup, `style.css` t
 
 Run it with `python3 -m http.server 8765` and open http://localhost:8765/. Add `?debug` to get `window.starfall`
 (state, stats, timers, save, `startRun()`, `trigger('giant')`, ...) for poking at it from the console or a test script.
-`?sdf=planet,pip,meteors` (or `all`) and `?planet=dense` turn on rendering experiments: ray-marched signed distance
-fields drawn through `engine/sdf.js`, and a dense mesh planet with carved craters. They are off by default; on the Pi 5 the SDF
-planet runs at about 21 fps, so it is not for the live game.
+`?sdf=planet,pip,meteors` (or `all`) turns on rendering experiments: ray-marched signed distance fields drawn
+through `engine/sdf.js`. They are off by default; on the Pi 5 the SDF planet runs at about 21 fps, so it is not for the
+live game.
 
 ## Layout
 
@@ -20,7 +20,7 @@ planet runs at about 21 fps, so it is not for the live game.
 | `src/sphere.js` | Planet math: surface points are unit vectors; `surfR`, `chord`, `pointNear`, `advance`, `standOn`. |
 | `src/input.js` | Keyboard, mouse and touch read into state that `game/run.js` polls. |
 | `src/engine/` | Renderer and lights (`stage`), shared materials and colors, the particle pool, sound effects, menu music. |
-| `src/world/` | The planet and its palettes, sky, decor (trees and rocks), terrain disks (warning rings, craters), landmarks. |
+| `src/world/` | The planet and its palettes, sky, decor (trees and rocks), meteor craters (`dents.js`), terrain disks (warning rings, shockwaves), landmarks. |
 | `src/actors/` | Pip's model and hats, pickups (shards and hearts), meteors, Star Buddies. |
 | `src/game/` | Rules: `run.js` (a run, scoring, hurt, game over), `abilities.js`, `upgrades.js`, `cosmetics.js`, `catalog.js` (the shop), `camera.js`. |
 | `src/ui/` | DOM: HUD, menus, shop, floating popups. |
@@ -49,6 +49,9 @@ Most additions are one table entry:
   and the cloned disk materials in `world/disks.js` are never disposed (disposing the last clone recompiles the shader,
   a 50-130 ms hitch). Share materials and geometries between instances; avoid allocating in per-frame loops (reuse
   scratch vectors such as `_v`).
+- Meteors dent the ground for about 24 s, so ground height changes over time. Things that sit on the ground read
+  `surfR(n)` every frame (Pip, pickups, landmarks) or stay out of craters (regrowing decor). Shaders draw craters per
+  vertex with `dentGLSL` from `world/dents.js`; looping over the craters per pixel cost about 3 ms of GPU time on the Pi.
 - It must play on phones: anything a key does needs a touch path (`coarse` in `platform.js`, `(pointer: coarse)` in
   CSS), and layouts must respect the safe-area insets. Check portrait and landscape.
 - Ability and shop descriptions use `coarse` to say "Tap" or "Press"; keep both wordings when adding one.

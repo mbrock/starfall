@@ -19,10 +19,9 @@ export const slowGPU = (() => {
 const params = new URLSearchParams(location.search);
 export const debug = params.has('debug');
 // Rendering experiments: ?sdf=planet,pip,meteors (or all) draws those as ray-marched signed distance fields
-// (engine/sdf.js); ?planet=dense draws a smooth high-poly planet instead, as the plain-geometry comparison.
+// (engine/sdf.js).
 const sdfList = (params.get('sdf') ?? '').split(',');
 export const sdf = (part) => sdfList.includes(part) || sdfList.includes('all');
-export const densePlanet = params.get('planet') === 'dense';
 
 // localStorage throws in some private modes and sandboxed iframes; the game then just forgets.
 export const storage = {
