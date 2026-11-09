@@ -110,7 +110,7 @@ export function onMeteorLand(n) {
   sfx.boom(clamp(1 - dist / 14, 0.15, 1));
   if (game.phase !== 'play' || !pip.alive) return;
   const hit = dist < BLAST * 0.92;
-  if (physics && !active('giant')) knockFrom(n, dist);
+  if (physics && !active('giant') && !active('dash')) knockFrom(n, dist); // giants and dashes plow through
   if (hit && active('giant')) {
     run.score += 5 * run.combo; popup('bonk! +' + 5 * run.combo, abovePip(2.2), 'gold');
     burst(abovePip(1.6), 24, COLORS.gold, 5, 0.7, 0.4, pip.p, 1);
@@ -134,7 +134,7 @@ function knockFrom(n, dist) {
   if (s <= 0) return;
   _v.subVectors(pip.p, n).addScaledVector(pip.p, -_v.dot(pip.p));
   if (_v.lengthSq() < 1e-6) randomTangent(pip.p, _v);
-  knockPip(_v.normalize().multiplyScalar(7 * s).addScaledVector(pip.p, 2.5 + 3.5 * s));
+  knockPip(_v.normalize().multiplyScalar(7 * s).addScaledVector(pip.p, 3 + 4.5 * s));
 }
 
 function collect(pk) {

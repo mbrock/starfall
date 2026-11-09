@@ -14,6 +14,8 @@ export const pipTuning = {
   airSteer: 0.25,   // share of that he has in the air
   groundForce: 90,  // m/s² the mover joint may use on the ground, and in the air
   airForce: 12,
+  airSpeed: 8,      // m/s: in the air he brakes down to this (a dash is faster than orbit speed on a 10 m planet)
+  fall: 1.6,        // gravity scale: he falls faster than shards and rocks, as Box3D's own character mover does
   hertz: 5.5, damping: 0.85, // the spring holding him off the ground
   knock: 1,         // scales meteor knockback
 };
@@ -30,7 +32,7 @@ const _up = new V(), _v = new V(), _w = new V(), _n = new V();
 export const restHeight = (board) => (0.42 + (board ? 0.14 : 0)) * pip.scale;
 
 function create() {
-  h = physics.body(DYNAMIC, pipBody.pos, { gravity: 1, flags: LOCK_ROTATION | NO_SLEEP });
+  h = physics.body(DYNAMIC, pipBody.pos, { gravity: pipTuning.fall, flags: LOCK_ROTATION | NO_SLEEP });
   shape = physics.sphere(h, BODY_R, { density: 120, friction: 0, restitution: 0, cat: CAT.pip, mask: CAT.ground | CAT.prop | CAT.debris });
   mass = physics.mass(h);
   physics.moverCreate(h);
@@ -82,8 +84,9 @@ export function drivePip(dt, dir, speed, accel = 1, board = false) {
     if (add > 0) _v.addScaledVector(dir, Math.min(add, (pipBody.grounded ? 1 : t.airSteer) * t.accelerate * accel * speed * dt));
     if (_v.length() > Math.max(speed, before)) _v.setLength(Math.max(speed, before)); // turning never adds speed
   }
-  const rest = restHeight(board), weight = mass * GRAVITY * pip.scale ** 0.5;
-  const force = mass * (pipBody.grounded ? t.groundForce : t.airForce) * accel;
+  let force = mass * (pipBody.grounded ? t.groundForce : t.airForce) * accel;
+  if (!pipBody.grounded && _v.length() > t.airSpeed) { _v.setLength(t.airSpeed); force = Math.max(force, mass * 40); }
+  const rest = restHeight(board), weight = mass * GRAVITY * t.fall;
   const ground = physics.moverUpdate(_up, pipBody.grounded ? rest * 2 : rest, rest, t.hertz, t.damping,
     jumping ? 0 : 60 * weight, 60 * weight, _v, force, 0.5, CAT.ground | CAT.prop, _n);
   if (jumping && ++jumpTicks > 2 && ground && pipBody.vel.dot(_n) <= 0) jumping = false;
