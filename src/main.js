@@ -132,7 +132,9 @@ resize();
 
 // ---------- frame loop ----------
 function frame(dt) {
-  if (game.paused) dt = 0;
+  // Freeze the last view, including camera shake and flight effects that still change with dt = 0.
+  // Menu input is polled outside this function, so every pause/resume control stays responsive.
+  if (game.paused) { renderer.render(scene, camera); return; }
   game.clock += dt;
   if (game.phase === 'play') updatePlay(dt);
   else updateDemo(dt);
