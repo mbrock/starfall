@@ -10,6 +10,9 @@
 <div id="game"></div>
 <div id="flash"></div>
 <div id="popups"></div>
+<div id="travel-tags"></div>
+<div class="travel-hud" id="travel-hud" hidden><span class="arrow" id="travel-arrow">▲</span><span id="travel-text"></span></div>
+<div class="travel-banner" id="travel-banner" hidden><span class="label" id="tb-eyebrow"></span><b id="tb-name"></b><span id="tb-blurb"></span></div>
 
 <div class="hud" id="hud" hidden>
   <div class="hud-top">
@@ -38,6 +41,7 @@
     <button id="driftbtn" type="button" hidden>Drift<span>Ready</span></button>
     <button id="burstbtn" type="button" hidden>Burst<span>Ready</span></button>
     <button id="giantbtn" type="button" hidden>Giant<span>Ready</span></button>
+    <button id="jetbtn" type="button" hidden>Launch<span>Jets</span></button>
     <button id="blinkbtn" type="button">Blink<span>Ready</span></button>
     <button id="dashbtn" type="button">Dash<span>Ready</span></button>
   </div>
@@ -47,6 +51,7 @@
   <div class="card">
     <p class="eyebrow" id="eyebrow">A tiny planet. A falling sky.</p>
     <h1 id="headline"><em>Starfall</em><br>Keeper</h1>
+    <p class="variants" id="variants" hidden></p>
     <p class="lede" id="lede">Meteors are raining on Pip's little world. Every one that lands leaves a star shard glowing in its crater. Stay out of the red rings, then dive in and grab the shards before they fade. Shards turn into stardust you can spend in the shop.</p>
     <div class="result" id="result" hidden>
       <div id="r-score-box"><span class="label">Score</span><b id="r-score">0</b></div>

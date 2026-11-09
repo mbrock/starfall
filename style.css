@@ -194,3 +194,35 @@ h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 2
   #pausebtn { top: calc(env(safe-area-inset-top, 0px) + 64px); right: auto; left: 50%; transform: translateX(-50%); }
 }
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* Travel prototypes (?travel=..., game/travel.js) */
+.variants { margin: 0; font-size: 12px; color: var(--dim); }
+.variants a { color: var(--mint); }
+.variants b { color: var(--gold); }
+.travel-hud {
+  position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 66px);
+  display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px);
+  padding: 6px 12px; border-radius: 999px; background: rgba(11,10,31,0.55); border: 1px solid var(--line);
+  font-size: 12px; font-weight: 600; color: var(--ink); pointer-events: none; white-space: nowrap;
+}
+.travel-hud.hot { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 18px rgba(255,207,90,0.35); }
+.travel-hud .arrow { display: inline-block; color: var(--gold); font-size: 13px; line-height: 1; }
+.travel-banner {
+  position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: max-content; max-width: 92vw;
+  display: grid; gap: 4px; text-shadow: 0 2px 14px rgba(0,0,0,0.8);
+}
+.travel-banner b { font: 800 clamp(22px, min(6vw, 7.5vh), 44px) var(--font-display); color: var(--ink); }
+.travel-banner span:last-child { font-size: 13px; color: var(--gold); }
+#travel-tags { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.body-tag { position: absolute; left: 0; top: 0; padding: 3px 8px; border-radius: 999px; background: rgba(11,10,31,0.6); border: 1px solid var(--line); font-size: 11px; color: var(--ink); white-space: nowrap; display: flex; gap: 5px; align-items: center; }
+.body-tag i { display: none; font-style: normal; color: var(--gold); }
+.body-tag.edge { border-color: rgba(255,207,90,0.5); }
+.body-tag.edge i { display: inline-block; }
+.touch-actions #jetbtn { border-color: #7ee0ff; color: #7ee0ff; }
+@media (pointer: coarse) {
+  .travel-hud { top: calc(env(safe-area-inset-top, 0px) + 74px); font-size: 11px; white-space: normal; text-align: center; max-width: min(78vw, 22rem); }
+}
+@media (pointer: coarse) and (max-height: 500px) {
+  .travel-hud { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-width: 50vw; }
+  .travel-banner { top: 42%; }
+}

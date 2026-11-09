@@ -17,13 +17,14 @@ live game.
 | `src/state.js` | Shared mutable state: `game` (phase, pause, clock, shake), `run` (score, combo, timers), `pip`, ability `timers`, run `stats`. |
 | `src/save.js` | localStorage progress (`save.dust`, `levels`, `equip`, `best`), `lv(id)`, `owns(item)`. |
 | `src/platform.js` | Device facts (`coarse` touch, `slowGPU`), safe storage, fullscreen. |
-| `src/sphere.js` | Planet math: surface points are unit vectors; `surfR`, `chord`, `pointNear`, `advance`, `standOn`. |
+| `src/sphere.js` | Planet math: surface points are unit vectors; `surfR`, `chord`, `pointNear`, `advance`, `standOn`. `R` is the radius of whichever body Pip stands on (a live binding that `setGround()` changes). |
 | `src/input.js` | Keyboard, mouse and touch read into state that `game/run.js` polls. |
 | `src/engine/` | Renderer and lights (`stage`), shared materials and colors, the particle pool, sound effects, menu music. |
 | `src/world/` | The planet and its palettes, sky, decor (trees and rocks), meteor craters (`dents.js`), terrain disks (warning rings, shockwaves), landmarks. |
 | `src/actors/` | Pip's model and hats, pickups (shards and hearts), meteors, Star Buddies. |
 | `src/game/` | Rules: `run.js` (a run, scoring, hurt, game over), `abilities.js`, `upgrades.js`, `cosmetics.js`, `catalog.js` (the shop), `camera.js`. |
 | `src/ui/` | DOM: HUD, menus, shop, floating popups. |
+| `src/world/bodies.js`, `src/game/flight.js`, `src/game/travel*.js`, `src/actors/vehicles.js` | Prototype travel to other worlds, only with `?travel=rocket\|jet\|comet` (see below). |
 
 Dependencies point downward: `main` → `game` and `ui` → `actors` and `world` → `engine` → `state`, `sphere`, `platform`.
 `ui` may read `game` tables; `game/run.js` calls `ui` to show things. Keep `engine`, `world` and `actors` free of game
@@ -40,6 +41,17 @@ Most additions are one table entry:
 - **Cosmetic**: a row in the slot's table in `game/cosmetics.js`; a new hat model goes in `actors/hats.js`.
 - **Landmark**: an entry in `LANDMARKS` (`world/landmarks.js`); it gets a spot on the planet and a shop item.
 - **Something that moves every frame**: an `updateX(dt)` in its module, called from the loop in `main.js`.
+
+## Travel to other worlds (prototypes)
+
+`?travel=rocket`, `?travel=jet` and `?travel=comet` each turn on one way of reaching other worlds; without the flag
+the game is the one-planet game. The worlds are the `BODIES` table in `world/bodies.js` (radius, terrain, palette,
+decor mix, shard multiplier, meteor rate, place in the sky). Home is the smooth cratered planet; the others are
+flat-shaded meshes without craters, because the crater shader in `world/dents.js` bakes in the home radius. The body Pip stands on is always at the origin: when
+he flies closer to another body, `recenter()` in `game/flight.js` moves that body's mesh to the origin, changes `R` and
+the terrain, respreads the decor and shifts the camera, particles and the style's own objects, so all surface code keeps working. Each
+style module (`game/travel-rocket.js`, `-jet.js`, `-comet.js`) has the same hooks, listed in `game/travel.js`.
+With `?debug`, `starfallTravel.ready()` skips the unlock and `starfall.step(dt)` advances one frame for recordings.
 
 ## Rules that are easy to break
 

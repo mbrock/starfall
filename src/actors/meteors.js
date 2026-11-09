@@ -33,6 +33,8 @@ export function spawnMeteor(n, fall) {
 }
 function removeMeteor(m) { removeDisk(m.warn); scene.remove(m.mesh); }
 export function clearMeteors() { for (const m of meteors) removeMeteor(m); meteors.length = 0; }
+/** Remove craters and shockwaves still showing (before Pip leaves for another body). */
+export function clearCraters() { for (const e of effects) removeDisk(e.mesh); effects.length = 0; }
 
 const dust = new THREE.Color(0x8a7fb8);
 function land(m) {

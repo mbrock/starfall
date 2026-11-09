@@ -35,6 +35,11 @@ export function burst(p, n, color, speed, seconds, gravity = 1, up = null, upBoo
   }
 }
 
+/** Move every particle by -offset, when the world re-centers on another body (game/travel.js). */
+export function shiftParticles(offset) {
+  for (let i = 0; i < MAX * 3; i += 3) { pos[i] -= offset.x; pos[i + 1] -= offset.y; pos[i + 2] -= offset.z; }
+}
+
 export function updateParticles(dt) {
   for (let i = 0; i < MAX; i++) {
     if (life[i] <= 0) continue;

@@ -38,7 +38,7 @@ function build(kind) {
     }
     color = mats.crystal.color;
   }
-  return { obj: g, color };
+  return { obj: g, color, kind };
 }
 
 /** state: 'live' → 'dying' (shrinks) → 'dead' (hidden, waiting) → 'growing' → 'live'. */
@@ -50,8 +50,8 @@ function place(d, n) {
 }
 for (let i = 0; i < 80; i++) {
   const r = Math.random();
-  const { obj, color } = build(r < 0.42 ? 'tree' : r < 0.7 ? 'round' : r < 0.88 ? 'rock' : 'crystal');
-  const d = { obj, color, n: new V(), full: rand(0.7, 1.25), s: 0, state: 'live', timer: 0 };
+  const { obj, color, kind } = build(r < 0.42 ? 'tree' : r < 0.7 ? 'round' : r < 0.88 ? 'rock' : 'crystal');
+  const d = { obj, color, kind, n: new V(), full: rand(0.7, 1.25), s: 0, state: 'live', timer: 0 };
   let n; do { n = randomUnit(); } while (n.y > 0.97); // keep the spawn point clear
   place(d, n); d.s = d.full; obj.scale.setScalar(d.s);
   scene.add(obj); decor.push(d);
@@ -60,6 +60,18 @@ for (let i = 0; i < 80; i++) {
 /** Move any decor within `radius` m of n somewhere else, to make room for a landmark. */
 export function clearDecorAround(n, radius) {
   for (const d of decor) if (chord(d.n, n) < radius) place(d, randomUnit());
+}
+
+/**
+ * Spread the decor over the body Pip now stands on (after it changes size), keeping a share (0-1) of each kind,
+ * such as { rock: 0.5, crystal: 1 }; kinds left out stay hidden. No share keeps everything.
+ */
+export function respreadDecor(share) {
+  for (const d of decor) {
+    if (share && Math.random() >= (share[d.kind] ?? 0)) { d.state = 'dead'; d.timer = Infinity; d.obj.visible = false; continue; }
+    place(d, randomUnit());
+    d.state = 'live'; d.s = d.full; d.obj.scale.setScalar(d.s); d.obj.visible = true;
+  }
 }
 
 /** Knock down standing decor within `radius` m of n, calling onKnock(position, up) for each one. */

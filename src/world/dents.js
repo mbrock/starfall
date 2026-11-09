@@ -47,8 +47,13 @@ void dentPaint(vec2 m, inout vec3 albedo, inout vec3 emissive) {
   emissive += vec3(1.0, 0.35, 0.08) * 2.5 * m.y;
 }`;
 
+let enabled = true;
+/** Turn crater carving on or off (off while Pip is on another world, see world/bodies.js); off also fills them in. */
+export function enableDents(on) { enabled = on; if (!on) dents.length = 0; }
+
 /** Carve a dent where a meteor lands. */
 export function dentPlanet(n) {
+  if (!enabled) return;
   if (dents.length >= MAX_DENTS) dents.shift();
   dents.push({ n: n.clone(), k: 0, age: 0 });
 }

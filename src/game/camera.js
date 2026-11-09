@@ -11,9 +11,18 @@ export const camPos = new V(0, 14, 34);
 const camLook = new V(), camUp = new V(0, 1, 0);
 const _a = new V(), _b = new V(), _d = new V();
 
+/** While on (flights between bodies, game/travel.js), the camera eases toward pos at `rate`, looking at look. */
+export const camRig = { on: false, pos: new V(), look: new V(), up: new V(0, 1, 0), rate: 4.5 };
+/** Move the camera by -offset, when the world re-centers on another body. */
+export function shiftCamera(offset) { camPos.sub(offset); camLook.sub(offset); }
+
 export function updateCamera(dt) {
   const k = 1 - Math.exp(-4.5 * dt), t = game.clock, over = game.phase === 'over';
-  if (game.phase === 'title' || (over && game.overReady)) {
+  if (camRig.on) {
+    const kr = 1 - Math.exp(-camRig.rate * dt);
+    camPos.lerp(camRig.pos, kr); camLook.lerp(camRig.look, kr); camUp.lerp(camRig.up, kr).normalize();
+    if (camPos.length() < R + 1.2) camPos.setLength(R + 1.2); // never inside the ground
+  } else if (game.phase === 'title' || (over && game.overReady)) {
     const a = t * 0.12;
     _a.set(Math.sin(a) * 30, 9 + Math.sin(t * 0.2) * 3, Math.cos(a) * 30);
     camPos.lerp(_a, k * 0.5); camLook.lerp(_b.set(0, 0, 0), k * 0.5); camUp.lerp(UP, k).normalize();
@@ -35,7 +44,9 @@ export function updateCamera(dt) {
   camera.updateMatrixWorld();
 
   const right = _d.setFromMatrixColumn(camera.matrixWorld, 0);
-  _a.copy(camPos).normalize().addScaledVector(right, 0.7).addScaledVector(camera.up, 0.6).normalize();
+  // In flight the camera can be far out looking anywhere, so light from behind it instead of from the planet's center.
+  if (camRig.on) _a.subVectors(camPos, camLook).normalize(); else _a.copy(camPos).normalize();
+  _a.addScaledVector(right, 0.7).addScaledVector(camera.up, 0.6).normalize();
   sun.position.copy(_a).multiplyScalar(45);
   hemi.position.copy(camPos).normalize();
   updateHalo(camPos);

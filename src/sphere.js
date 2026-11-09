@@ -1,10 +1,15 @@
-// Geometry of Pip's planet. Positions on the surface are unit vectors ("normals", usually named n);
-// multiply by surfR(n) to get the world-space point on the ground.
+// Geometry of the body Pip stands on, which is always centered at the origin. Positions on the surface are
+// unit vectors ("normals", usually named n); multiply by surfR(n) to get the world-space point on the ground.
 import * as THREE from 'three';
 
 export const V = THREE.Vector3;
 export const UP = new V(0, 1, 0);
-export const R = 10; // planet radius
+/** Radius of the body Pip stands on. A live binding: setGround() changes it when Pip travels (world/bodies.js). */
+export let R = 10;
+/** The ground's bumps: noise sampled at n × freq (+ seed) and scaled by amp meters. */
+export const HOME_TERRAIN = { amp: 0.24, freq: 2.2, seed: 0 };
+let terrain = HOME_TERRAIN;
+export function setGround(radius, shape) { R = radius; terrain = shape; }
 
 export const rand = (a, b) => a + Math.random() * (b - a);
 export const pick = (list) => list[Math.floor(Math.random() * list.length)];
@@ -14,8 +19,8 @@ export function noise3(x, y, z) {
     + Math.sin(y * 3.3 + z * 2.7 + x * 0.7) * 0.25
     + Math.sin(x * 5.1 - y * 4.3 + z * 3.9) * 0.12;
 }
-/** Height of the terrain under n, without meteor craters. */
-export const terrainAt = (n) => noise3(n.x * 2.2, n.y * 2.2, n.z * 2.2) * 0.24;
+/** Height of the terrain under n, without meteor craters, for a terrain shape (default: the current body's). */
+export const terrainAt = (n, t = terrain) => noise3(n.x * t.freq + t.seed, n.y * t.freq, n.z * t.freq - t.seed) * t.amp;
 /** Meteor craters in the ground, { n, k (0-1 depth) }, managed by world/dents.js. */
 export const dents = [];
 /** Height in meters of a crater's surface at `c` m from its center: a bowl with a raised rim (dentH in world/dents.js matches it). */
@@ -49,6 +54,13 @@ export function pointNear(n, minA, maxA) {
 export function standOn(obj, n, lift = 0) {
   obj.position.copy(n).multiplyScalar(surfR(n) + lift);
   obj.quaternion.setFromUnitVectors(UP, n);
+}
+
+/** A surface point between minA and maxA radians of arc from n, roughly along heading f (within ±spread radians). */
+export function pointAhead(n, f, minA, maxA, spread) {
+  const t = f.clone().applyAxisAngle(n, rand(-spread, spread));
+  const a = minA + Math.random() * (maxA - minA);
+  return n.clone().multiplyScalar(Math.cos(a)).addScaledVector(t, Math.sin(a)).normalize();
 }
 
 const _axis = new V();

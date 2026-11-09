@@ -20,6 +20,7 @@ import { computeStats } from './game/catalog.js';
 import { applyLook } from './game/cosmetics.js';
 import { onMeteorLand, setPaused, startRun, updateDemo, updatePlay } from './game/run.js';
 import { updateCamera } from './game/camera.js';
+import { travelAction, updateTravel } from './game/travel.js';
 import { updateHud } from './ui/hud.js';
 import { updatePopups } from './ui/popups.js';
 import { closeShop, isShopOpen, openShop } from './ui/shop.js';
@@ -41,6 +42,7 @@ addEventListener('keydown', (e) => {
   if (game.phase === 'play' && e.code === 'KeyP') setPaused(!game.paused);
   if (game.phase === 'play' && e.code === 'Escape') setPaused(true);
   if (playing()) for (const ab of ABILITIES) if (ab.keys?.includes(e.code)) trigger(ab.id);
+  if (playing() && e.code === 'KeyJ') travelAction();
   const confirm = e.code === 'Enter' || e.code === 'Space';
   if (isShopOpen()) { if (e.code === 'Escape') closeShop(); }
   else if (canRestart() && confirm) startRun();
@@ -65,6 +67,7 @@ for (const ab of ABILITIES) {
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); trigger(ab.id); });
   b.addEventListener('click', (e) => { if (e.detail === 0) trigger(ab.id); }); // keyboard activation
 }
+$('jetbtn').addEventListener('pointerdown', (e) => { e.preventDefault(); travelAction(); });
 canvas.addEventListener('pointerdown', (e) => { if (e.button === 2) { e.preventDefault(); trigger('blink'); } });
 
 // Browsers only allow sound after a user gesture.
@@ -87,9 +90,7 @@ addEventListener('resize', resize);
 resize();
 
 // ---------- frame loop ----------
-let last = performance.now();
-renderer.setAnimationLoop((now) => {
-  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+function frame(dt) {
   if (game.paused) dt = 0;
   game.clock += dt;
   if (game.phase === 'play') updatePlay(dt);
@@ -100,11 +101,16 @@ renderer.setAnimationLoop((now) => {
   updateLandmarks(dt);
   updateDents(dt);
   posePip(dt);
+  updateTravel(dt); // flights between worlds (only with ?travel=...)
   updateParticles(dt);
   updateCamera(dt);
   updatePopups(dt);
   updateHud();
   renderer.render(scene, camera);
-});
+}
+let last = performance.now();
+renderer.setAnimationLoop((now) => { frame(Math.min(0.05, (now - last) / 1000)); last = now; });
 
-if (debug) window.starfall = { game, run, pip, stats, timers, save, startRun, setPaused, trigger, scene, renderer };
+// step(dt) stops the real-time loop and advances exactly one frame, for recording smooth clips in slow browsers.
+const step = (dt = 1 / 60) => { renderer.setAnimationLoop(null); frame(dt); };
+if (debug) window.starfall = { game, run, pip, stats, timers, save, startRun, setPaused, trigger, scene, renderer, step };

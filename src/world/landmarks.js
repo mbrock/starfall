@@ -53,9 +53,18 @@ LANDMARKS.forEach((lm, i) => {
   clearDecorAround(n, 1.4);
 });
 
+let atHome = true;
 /** Show the landmarks for which built(key) is true. */
 export function showLandmarks(built) {
-  for (const lm of LANDMARKS) lm.obj.visible = built(lm.key);
+  for (const lm of LANDMARKS) { lm.built = built(lm.key); lm.obj.visible = atHome && lm.built; }
+}
+/** Landmarks stand only on Pip's home planet; hide them while Pip is on another body (world/bodies.js). */
+export function setLandmarksHome(home) {
+  atHome = home;
+  for (const lm of LANDMARKS) {
+    lm.obj.visible = home && !!lm.built;
+    if (home) clearDecorAround(lm.n, 1.4);
+  }
 }
 
 export function updateLandmarks(dt) {

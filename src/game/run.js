@@ -18,6 +18,7 @@ import { computeStats } from './catalog.js';
 import { resetAbilities, tickAbilities } from './abilities.js';
 import { currentTrail } from './cosmetics.js';
 import { camPos } from './camera.js';
+import { bodyMul, meteorRate, onTravelCollect, onTravelMeteor, resetTravel, travelling, updateTravelGround } from './travel.js';
 import { flashHurt, renderLives, showRunHud } from '../ui/hud.js';
 import { hideTouchControls, showGameOver, showPause } from '../ui/menus.js';
 import { popup } from '../ui/popups.js';
@@ -31,6 +32,7 @@ export function startRun() {
   initAudio();
   clearMeteors();
   clearPickups();
+  resetTravel();
   computeStats();
   resetAbilities();
   trail = currentTrail();
@@ -114,6 +116,7 @@ export function onMeteorLand(n) {
     run.score += bonus;
     popup('close call +' + bonus, abovePip(0.9), 'ink');
   }
+  if (onTravelMeteor(n)) return; // left a jet core instead
   if (stats.clover && pip.lives < stats.maxLives && Math.random() < 0.1) dropPickup(pointNear(n, 0, 0.05), 'heart', 9);
   else if (Math.random() < 0.8) {
     dropPickup(pointNear(n, 0, 0.05), stats.goldRush && Math.random() < 0.125 ? 'gold' : 'shard', stats.shardLife);
@@ -126,16 +129,19 @@ function collect(pk) {
     pip.lives = Math.min(stats.maxLives, pip.lives + 1); renderLives(); sfx.heart();
     popup('+1 hull', pk.g.position, 'mint');
     burst(pk.g.position, 26, COLORS.mint, 3.5, 0.8, 0.3);
+  } else if (pk.kind === 'core') {
+    burst(pk.g.position, 30, COLORS.mint, 4, 0.7, 0.3);
   } else {
     const gold = pk.kind === 'gold' ? 5 : 1;
-    const gain = Math.round(10 * run.combo * stats.shardMul) * gold;
+    const gain = Math.round(10 * run.combo * stats.shardMul * bodyMul()) * gold;
     run.score += gain; sfx.pickup(run.combo);
     popup((gold > 1 ? 'GOLD +' : '+') + gain + (run.combo > 1 ? '  ×' + run.combo : ''), pk.g.position, 'gold');
     burst(pk.g.position, gold > 1 ? 50 : 22, COLORS.gold, gold > 1 ? 5 : 3.5, 0.7, 0.3);
-    run.dust += (1 + Math.floor(run.combo / 3)) * stats.dustMul * gold;
+    run.dust += (1 + Math.floor(run.combo / 3)) * stats.dustMul * gold * bodyMul();
     run.combo = Math.min(stats.comboMax, run.combo + 1); run.comboT = stats.comboWin;
     run.bestChain = Math.max(run.bestChain, run.combo);
   }
+  onTravelCollect(pk.kind);
   removePickup(pk);
 }
 
@@ -186,7 +192,7 @@ function spawnThings(dt) {
   // meteors come faster and fall faster the longer the run lasts
   run.spawnT -= dt;
   if (run.spawnT <= 0) {
-    const interval = Math.max(0.4, 1.45 - run.time * 0.0135);
+    const interval = Math.max(0.4, 1.45 - run.time * 0.0135) / meteorRate();
     const fall = Math.max(1.1, 1.9 - run.time * 0.0075) * stats.fallMul;
     run.spawnT = interval * rand(0.7, 1.3);
     const r = Math.random();
@@ -223,6 +229,7 @@ function collectNearby(dt) {
 
 export function updatePlay(dt) {
   run.time += dt;
+  if (travelling()) return; // in flight between worlds: game/travel.js flies Pip
   movePip(dt);
   pipEffects(dt);
   spawnThings(dt);
@@ -230,6 +237,7 @@ export function updatePlay(dt) {
   if (run.comboT <= 0) run.combo = 1;
   collectNearby(dt);
   updateBuddies(dt, collect);
+  updateTravelGround(dt);
 }
 
 /** Title and game-over screens: harmless meteors near the camera for atmosphere. */
